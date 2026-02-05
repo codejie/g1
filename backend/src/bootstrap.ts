@@ -1,19 +1,16 @@
 import Fastify, { FastifyInstance } from 'fastify';
 import path from 'path';
 import fs from 'fs';
-import fsPromises from 'fs/promises'; // Import fs/promises
+import fsPromises from 'fs/promises';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
-// Removed schedule import
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
-// Removed fastifyStatic import
 import db from './config/database';
-import { ApiError } from './utils/errors';
 import { Response, RESPONSE_CODES } from './types/common';
-import { setupExampleTask } from './tasks/exampleTask'; // Import task
+import config from './config';
 
-const UPLOAD_DIR = path.join(__dirname, '..', 'uploads'); // Define upload directory here
+const UPLOAD_DIR = config.UPLOAD_DIR;
 
 export const bootstrap = async (server: FastifyInstance) => {
     // Ensure upload directory exists
@@ -64,31 +61,21 @@ export const bootstrap = async (server: FastifyInstance) => {
     // Removed server.scheduler.start();
 
     server.setErrorHandler((error, request, reply) => {
-        request.log.error(error); // Log the error for debugging
+        request.log.error(error);
 
-        if (error instanceof ApiError) {
-            const response: Response = {
-                code: error.errorCode as number,
-                data: {
-                    message: error.message
-                }
-            };
-            reply.code(RESPONSE_CODES.HTTP_OK).send(response);
-        } else if (error && (error as any).validation) { // Fastify validation errors
+        if (error && (error as any).validation) {
             const response: Response = {
                 code: RESPONSE_CODES.VALIDATION_ERROR,
-                data: {
-                    message: (error as any).message || 'Validation error'
-                }
+                message: (error as any).message || 'Validation error',
+                data: undefined
             };
             reply.code(RESPONSE_CODES.HTTP_OK).send(response);
         } else {
-            // Generic server error
+            const err = error as any;
             const response: Response = {
                 code: RESPONSE_CODES.INTERNAL_ERROR,
-                data: {
-                    message: 'Internal Server Error'
-                }
+                message: err?.message || 'Internal Server Error',
+                data: undefined
             };
             reply.code(RESPONSE_CODES.HTTP_OK).send(response);
         }

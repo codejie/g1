@@ -6,13 +6,15 @@
       </h2>
       <form @submit.prevent="handleRegister">
         <div class="mb-4">
-          <label for="name" class="block text-gray-700 text-sm font-bold mb-2"
-            >{{ $t('name') }}:</label
+          <label
+            for="username"
+            class="block text-gray-700 text-sm font-bold mb-2"
+            >{{ $t('username') }}:</label
           >
           <input
             type="text"
-            id="name"
-            v-model="name"
+            id="username"
+            v-model="username"
             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             required
           />
@@ -70,21 +72,33 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import userService from '../../services/user'
 
 const authStore = useAuthStore()
+const router = useRouter()
 
-const name = ref('')
+const username = ref('')
 const email = ref('')
 const password = ref('')
 
 const handleRegister = async () => {
-  await authStore.register({
-    name: name.value,
-    email: email.value,
-    password: password.value,
-  })
+  authStore.setLoading(true)
+  authStore.setError(null)
+  try {
+    await userService.register({
+      username: username.value,
+      email: email.value,
+      password: password.value,
+    })
+    router.push('/login')
+  } catch (err: any) {
+    authStore.setError(err.message || 'Registration failed')
+    console.error('Register error:', err)
+  } finally {
+    authStore.setLoading(false)
+  }
 }
 </script>
 

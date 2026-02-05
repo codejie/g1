@@ -1,13 +1,6 @@
 import { defineStore } from 'pinia'
-import api from '../services/api'
 import router from '../router'
-import {
-  type LoginRequest,
-  type LoginResponse,
-  type RegisterRequest,
-  type RegisterResponse,
-  type User,
-} from '../types/user' // Updated import path
+import type { User } from '../types/user'
 
 interface AuthState {
   token: string | null
@@ -40,48 +33,12 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
     },
-
-    async login(credentials: LoginRequest) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await api.post<LoginResponse>(
-          '/user/login',
-          credentials,
-        )
-        if (response.data.data.token && response.data.data.user) {
-          this.setAuth(response.data.data.token, response.data.data.user)
-          router.push('/')
-        }
-      } catch (err: any) {
-        this.error = err.response?.data?.error?.message || 'Login failed'
-        console.error('Login error:', err)
-        this.clearAuth()
-      } finally {
-        this.loading = false
-      }
+    setLoading(loading: boolean) {
+      this.loading = loading
     },
-
-    async register(userData: RegisterRequest) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await api.post<RegisterResponse>(
-          '/user/register',
-          userData,
-        )
-        if (response.data.data.user) {
-          router.push('/login')
-        }
-      } catch (err: any) {
-        this.error = err.response?.data?.error?.message || 'Registration failed'
-        console.error('Register error:', err)
-        this.clearAuth()
-      } finally {
-        this.loading = false
-      }
+    setError(error: string | null) {
+      this.error = error
     },
-
     logout() {
       this.clearAuth()
       router.push('/login')

@@ -22,6 +22,7 @@ export default async function (fastify: FastifyInstance) {
                     description: 'Login successful',
                     properties: {
                         code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
                         data: {
                             type: 'object',
                             properties: {
@@ -29,10 +30,10 @@ export default async function (fastify: FastifyInstance) {
                                 user: {
                                     type: 'object',
                                     properties: {
-                                        id: { type: 'string', description: 'User ID' },
+                                        id: { type: 'number', description: 'User ID' },
+                                        username: { type: 'string', description: 'User username' },
                                         email: { type: 'string', description: 'User email' },
-                                        name: { type: 'string', description: 'User name' },
-                                        status: { type: 'number', description: 'User status (0=active, 1=inactive)' },
+                                        disabled: { type: 'number', description: 'User status (0=enabled, 1=disabled)' },
                                         created: { type: 'string', format: 'date-time', description: 'Creation timestamp' },
                                         updated: { type: 'string', format: 'date-time', description: 'Last update timestamp' }
                                     }
@@ -45,6 +46,37 @@ export default async function (fastify: FastifyInstance) {
         }
     }, userHandlers.login);
 
+    // Logout
+    fastify.post('/user/logout', {
+        schema: {
+            description: 'User logout endpoint',
+            tags: ['User'],
+            security: [{ bearerAuth: [] }],
+            body: {
+                type: 'object',
+                properties: {
+                    token: { type: 'string', description: 'Token to revoke (optional)' }
+                }
+            },
+            response: {
+                200: {
+                    type: 'object',
+                    description: 'Logout successful',
+                    properties: {
+                        code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                message: { type: 'string', description: 'Success message' }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }, userHandlers.logout);
+
     // Register
     fastify.post('/user/register', {
         schema: {
@@ -52,11 +84,12 @@ export default async function (fastify: FastifyInstance) {
             tags: ['User'],
             body: {
                 type: 'object',
-                required: ['email', 'password', 'name'],
+                required: ['username', 'email', 'password'],
                 properties: {
+                    username: { type: 'string', minLength: 3, description: 'User username' },
                     email: { type: 'string', format: 'email', description: 'User email address' },
                     password: { type: 'string', minLength: 6, description: 'User password' },
-                    name: { type: 'string', minLength: 1, description: 'User display name' }
+                    name: { type: 'string', minLength: 1, description: 'User display name (optional)' }
                 }
             },
             response: {
@@ -65,16 +98,17 @@ export default async function (fastify: FastifyInstance) {
                     description: 'Registration successful',
                     properties: {
                         code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
                         data: {
                             type: 'object',
                             properties: {
                                 user: {
                                     type: 'object',
                                     properties: {
-                                        id: { type: 'string', description: 'User ID' },
+                                        id: { type: 'number', description: 'User ID' },
+                                        username: { type: 'string', description: 'User username' },
                                         email: { type: 'string', description: 'User email' },
-                                        name: { type: 'string', description: 'User name' },
-                                        status: { type: 'number', description: 'User status (0=active, 1=inactive)' },
+                                        disabled: { type: 'number', description: 'User status (0=enabled, 1=disabled)' },
                                         created: { type: 'string', format: 'date-time', description: 'Creation timestamp' },
                                         updated: { type: 'string', format: 'date-time', description: 'Last update timestamp' }
                                     }
@@ -87,6 +121,330 @@ export default async function (fastify: FastifyInstance) {
         }
     }, userHandlers.register);
 
+    // Get User Profile
+    fastify.post('/user/profile', {
+        preHandler: [authenticate],
+        schema: {
+            description: 'Get current user profile',
+            tags: ['User'],
+            security: [{ bearerAuth: [] }],
+            response: {
+                200: {
+                    type: 'object',
+                    description: 'Profile retrieved successfully',
+                    properties: {
+                        code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                user: {
+                                    type: 'object',
+                                    properties: {
+                                        id: { type: 'number', description: 'User ID' },
+                                        username: { type: 'string', description: 'User username' },
+                                        email: { type: 'string', description: 'User email' },
+                                        disabled: { type: 'number', description: 'User status (0=enabled, 1=disabled)' },
+                                        created: { type: 'string', format: 'date-time', description: 'Creation timestamp' },
+                                        updated: { type: 'string', format: 'date-time', description: 'Last update timestamp' }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }, userHandlers.getProfile);
+
+    // Update User Profile
+    fastify.post('/user/set-profile', {
+        preHandler: [authenticate],
+        schema: {
+            description: 'Update user profile',
+            tags: ['User'],
+            security: [{ bearerAuth: [] }],
+            body: {
+                type: 'object',
+                properties: {
+                    username: { type: 'string', minLength: 3, description: 'New username' },
+                    email: { type: 'string', format: 'email', description: 'New email address' }
+                }
+            },
+            response: {
+                200: {
+                    type: 'object',
+                    description: 'Profile updated successfully',
+                    properties: {
+                        code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                user: {
+                                    type: 'object',
+                                    properties: {
+                                        id: { type: 'number', description: 'User ID' },
+                                        username: { type: 'string', description: 'User username' },
+                                        email: { type: 'string', description: 'User email' },
+                                        disabled: { type: 'number', description: 'User status (0=enabled, 1=disabled)' },
+                                        created: { type: 'string', format: 'date-time', description: 'Creation timestamp' },
+                                        updated: { type: 'string', format: 'date-time', description: 'Last update timestamp' }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }, userHandlers.updateProfile);
+
+    // Reset Password
+    fastify.post('/user/reset-password', {
+        preHandler: [authenticate],
+        schema: {
+            description: 'Reset user password',
+            tags: ['User'],
+            security: [{ bearerAuth: [] }],
+            body: {
+                type: 'object',
+                required: ['newPassword'],
+                properties: {
+                    email: { type: 'string', format: 'email', description: 'Email address (for reset flow)' },
+                    currentPassword: { type: 'string', description: 'Current password (for password change)' },
+                    newPassword: { type: 'string', minLength: 6, description: 'New password' }
+                }
+            },
+            response: {
+                200: {
+                    type: 'object',
+                    description: 'Password reset successful',
+                    properties: {
+                        code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                message: { type: 'string', description: 'Success message' }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }, userHandlers.resetPassword);
+
+    // Get User Tokens
+    fastify.post('/user/tokens', {
+        preHandler: [authenticate],
+        schema: {
+            description: 'Get user tokens',
+            tags: ['User'],
+            security: [{ bearerAuth: [] }],
+            body: {
+                type: 'object',
+                properties: {
+                    page_info: {
+                        type: 'object',
+                        properties: {
+                            page: { type: 'number', minimum: 1, default: 1, description: 'Page number' },
+                            size: { type: 'number', minimum: 1, maximum: 100, default: 10, description: 'Page size' }
+                        }
+                    }
+                }
+            },
+            response: {
+                200: {
+                    type: 'object',
+                    description: 'Tokens retrieved successfully',
+                    properties: {
+                        code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                items: {
+                                    type: 'array',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            id: { type: 'number', description: 'Token ID' },
+                                            token: { type: 'string', description: 'Token string' },
+                                            expires: { type: 'string', format: 'date-time', description: 'Token expiration time' },
+                                            disabled: { type: 'number', description: 'Token status (0=active, 1=disabled)' },
+                                            created: { type: 'string', format: 'date-time', description: 'Creation timestamp' }
+                                        }
+                                    }
+                                },
+                                page_info: {
+                                    type: 'object',
+                                    properties: {
+                                        page: { type: 'number', description: 'Current page number' },
+                                        size: { type: 'number', description: 'Page size' },
+                                        total: { type: 'number', description: 'Total number of items' }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }, userHandlers.getTokens);
+
+    // Revoke Token
+    fastify.post('/user/revoke-token', {
+        preHandler: [authenticate],
+        schema: {
+            description: 'Revoke user token',
+            tags: ['User'],
+            security: [{ bearerAuth: [] }],
+            body: {
+                type: 'object',
+                required: ['token'],
+                properties: {
+                    token: { type: 'string', description: 'Token to revoke' }
+                }
+            },
+            response: {
+                200: {
+                    type: 'object',
+                    description: 'Token revoked successfully',
+                    properties: {
+                        code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                message: { type: 'string', description: 'Success message' }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }, userHandlers.revokeToken);
+
+    // Get User Studios
+    fastify.post('/user/studios', {
+        preHandler: [authenticate],
+        schema: {
+            description: 'Get user studios',
+            tags: ['User'],
+            security: [{ bearerAuth: [] }],
+            body: {
+                type: 'object',
+                properties: {
+                    page_info: {
+                        type: 'object',
+                        properties: {
+                            page: { type: 'number', minimum: 1, default: 1, description: 'Page number' },
+                            size: { type: 'number', minimum: 1, maximum: 100, default: 10, description: 'Page size' }
+                        }
+                    }
+                }
+            },
+            response: {
+                200: {
+                    type: 'object',
+                    description: 'Studios retrieved successfully',
+                    properties: {
+                        code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                items: {
+                                    type: 'array',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            id: { type: 'number', description: 'Studio relationship ID' },
+                                            user_id: { type: 'number', description: 'User ID' },
+                                            studio_id: { type: 'number', description: 'Studio ID' },
+                                            role: { type: 'string', description: 'User role in studio' },
+                                            is_default: { type: 'boolean', description: 'Is default studio' },
+                                            is_owner: { type: 'boolean', description: 'Is studio owner' },
+                                            studio_name: { type: 'string', description: 'Studio name' },
+                                            created: { type: 'string', format: 'date-time', description: 'Creation timestamp' }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }, userHandlers.getUserStudios);
+
+    // Switch Studio
+    fastify.post('/user/switch-studio', {
+        preHandler: [authenticate],
+        schema: {
+            description: 'Switch default studio',
+            tags: ['User'],
+            security: [{ bearerAuth: [] }],
+            body: {
+                type: 'object',
+                required: ['studio_id'],
+                properties: {
+                    studio_id: { type: 'number', description: 'Studio ID to switch to' }
+                }
+            },
+            response: {
+                200: {
+                    type: 'object',
+                    description: 'Studio switched successfully',
+                    properties: {
+                        code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                message: { type: 'string', description: 'Success message' }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }, userHandlers.switchStudio);
+
+    // Delete Studio
+    fastify.post('/user/delete-studio', {
+        preHandler: [authenticate],
+        schema: {
+            description: 'Leave studio',
+            tags: ['User'],
+            security: [{ bearerAuth: [] }],
+            body: {
+                type: 'object',
+                required: ['studio_id'],
+                properties: {
+                    studio_id: { type: 'number', description: 'Studio ID to leave' }
+                }
+            },
+            response: {
+                200: {
+                    type: 'object',
+                    description: 'Studio left successfully',
+                    properties: {
+                        code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                message: { type: 'string', description: 'Success message' }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }, userHandlers.deleteStudio);
+
     // Get User
     fastify.post('/user/get', {
         preHandler: [authenticate],
@@ -98,7 +456,7 @@ export default async function (fastify: FastifyInstance) {
                 type: 'object',
                 required: ['id'],
                 properties: {
-                    id: { type: 'string', description: 'User ID to retrieve' }
+                    id: { type: 'number', description: 'User ID to retrieve' }
                 }
             },
             response: {
@@ -107,16 +465,17 @@ export default async function (fastify: FastifyInstance) {
                     description: 'User retrieved successfully',
                     properties: {
                         code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
                         data: {
                             type: 'object',
                             properties: {
                                 user: {
                                     type: 'object',
                                     properties: {
-                                        id: { type: 'string', description: 'User ID' },
+                                        id: { type: 'number', description: 'User ID' },
+                                        username: { type: 'string', description: 'User username' },
                                         email: { type: 'string', description: 'User email' },
-                                        name: { type: 'string', description: 'User name' },
-                                        status: { type: 'number', description: 'User status (0=active, 1=inactive)' },
+                                        disabled: { type: 'number', description: 'User status (0=enabled, 1=disabled)' },
                                         created: { type: 'string', format: 'date-time', description: 'Creation timestamp' },
                                         updated: { type: 'string', format: 'date-time', description: 'Last update timestamp' }
                                     }
@@ -165,6 +524,7 @@ export default async function (fastify: FastifyInstance) {
                     description: 'Users list retrieved successfully',
                     properties: {
                         code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
                         data: {
                             type: 'object',
                             properties: {
@@ -173,10 +533,10 @@ export default async function (fastify: FastifyInstance) {
                                     items: {
                                         type: 'object',
                                         properties: {
-                                            id: { type: 'string', description: 'User ID' },
+                                            id: { type: 'number', description: 'User ID' },
+                                            username: { type: 'string', description: 'User username' },
                                             email: { type: 'string', description: 'User email' },
-                                            name: { type: 'string', description: 'User name' },
-                                            status: { type: 'number', description: 'User status (0=active, 1=inactive)' },
+                                            disabled: { type: 'number', description: 'User status (0=enabled, 1=disabled)' },
                                             created: { type: 'string', format: 'date-time', description: 'Creation timestamp' },
                                             updated: { type: 'string', format: 'date-time', description: 'Last update timestamp' }
                                         }
@@ -209,11 +569,11 @@ export default async function (fastify: FastifyInstance) {
                 type: 'object',
                 required: ['id'],
                 properties: {
-                    id: { type: 'string', description: 'User ID to update' },
+                    id: { type: 'number', description: 'User ID to update' },
+                    username: { type: 'string', minLength: 3, description: 'New username' },
                     email: { type: 'string', format: 'email', description: 'New email address' },
-                    name: { type: 'string', minLength: 1, description: 'New display name' },
                     password: { type: 'string', minLength: 6, description: 'New password' },
-                    status: { type: 'number', enum: [0, 1], description: 'New status (0=active, 1=inactive)' }
+                    disabled: { type: 'number', enum: [0, 1], description: 'New status (0=enabled, 1=disabled)' }
                 }
             },
             response: {
@@ -222,16 +582,17 @@ export default async function (fastify: FastifyInstance) {
                     description: 'User updated successfully',
                     properties: {
                         code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
                         data: {
                             type: 'object',
                             properties: {
                                 user: {
                                     type: 'object',
                                     properties: {
-                                        id: { type: 'string', description: 'User ID' },
+                                        id: { type: 'number', description: 'User ID' },
+                                        username: { type: 'string', description: 'User username' },
                                         email: { type: 'string', description: 'User email' },
-                                        name: { type: 'string', description: 'User name' },
-                                        status: { type: 'number', description: 'User status (0=active, 1=inactive)' },
+                                        disabled: { type: 'number', description: 'User status (0=enabled, 1=disabled)' },
                                         created: { type: 'string', format: 'date-time', description: 'Creation timestamp' },
                                         updated: { type: 'string', format: 'date-time', description: 'Last update timestamp' }
                                     }
@@ -255,7 +616,7 @@ export default async function (fastify: FastifyInstance) {
                 type: 'object',
                 required: ['id'],
                 properties: {
-                    id: { type: 'string', description: 'User ID to delete' }
+                    id: { type: 'number', description: 'User ID to delete' }
                 }
             },
             response: {
@@ -264,6 +625,7 @@ export default async function (fastify: FastifyInstance) {
                     description: 'User deleted successfully',
                     properties: {
                         code: { type: 'number', description: 'Response code (0 for success)' },
+                        message: { type: 'string', description: 'Response message' },
                         data: {
                             type: 'object',
                             properties: {

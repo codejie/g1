@@ -164,13 +164,19 @@ const fetchSessions = async () => {
       '/agent/session/list',
       payload,
     )
-    if (response.data.data) {
+    if (response.data.code === 0 && response.data.data) {
       sessions.value = response.data.data.items
       pageInfo.value = response.data.data.page_info
+    } else {
+      authStore.error =
+        response.data.message || t('failed_to_fetch_sessions_error')
+      sessions.value = []
     }
   } catch (err: any) {
     authStore.error =
-      err.response?.data?.error?.message || t('failed_to_fetch_sessions_error')
+      err.response?.data?.message ||
+      err.response?.data?.error?.message ||
+      t('failed_to_fetch_sessions_error')
     sessions.value = []
   } finally {
     loading.value = false

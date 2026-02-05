@@ -58,16 +58,32 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import userService from '../../services/user'
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const email = ref('')
 const password = ref('')
 
 const handleLogin = async () => {
-  await authStore.login({ email: email.value, password: password.value })
+  authStore.setLoading(true)
+  authStore.setError(null)
+  try {
+    const result = await userService.login({
+      email: email.value,
+      password: password.value,
+    })
+    authStore.setAuth(result.token, result.user)
+    router.push('/')
+  } catch (err: any) {
+    authStore.setError(err.message || 'Login failed')
+    console.error('Login error:', err)
+  } finally {
+    authStore.setLoading(false)
+  }
 }
 </script>
 

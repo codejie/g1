@@ -8,7 +8,6 @@ export class ApiError extends Error {
         super(message);
         this.statusCode = statusCode;
         this.errorCode = errorCode;
-        Object.setPrototypeOf(this, ApiError.prototype);
     }
 
     static badRequest(message: string, errorCode: number = RESPONSE_CODES.INVALID_REQUEST) {

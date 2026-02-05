@@ -12,6 +12,7 @@
   "email": "Email",
   "password": "Password",
   "name": "Name",
+  "username": "Username",
   "sign_in": "Sign In",
   "dont_have_account": "Don't have an account? Register",
   "already_have_account": "Already have an account? Login",
@@ -55,5 +56,28 @@
     "workspace": "Workspace",
     "deployments": "Deployments",
     "monetization": "Monetization"
+  },
+  "workspace": {
+    "create_app_title": "Create New Application",
+    "app_description_placeholder": "Describe your application requirements (e.g., 'An e-commerce app selling vintage clothes').",
+    "create_app_button": "Create Application",
+    "chat_input_placeholder": "Type your message...",
+    "send_chat_button": "Send",
+    "finish_chat_button": "Finish Chat & Create App",
+    "app_list_title": "Your Applications",
+    "list_view": "List View",
+    "card_view": "Card View",
+    "app_name": "App Name",
+    "created_time": "Created Time",
+    "description": "Description",
+    "created_on": "Created On",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page",
+    "ai_initial_response": "Thank you for your request! I need a few more details to create your application. What is the target audience for this app?",
+    "ai_chat_response_prefix": "Understood. For the app concept of",
+    "ai_chat_response_suffix": "I will proceed with generating the initial structure. Is there anything else you'd like to add?",
+    "new_app_description": "Newly created application",
+    "cancel_chat_button": "Cancel"
   }
 }

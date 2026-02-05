@@ -1,7 +1,8 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
+import config from './index';
 
-const dbPath = path.join(__dirname, '..', '..', 'data', 'app.db');
+const dbPath = config.DATABASE_PATH;
 
 class DatabaseWrapper {
     private db: sqlite3.Database;
@@ -20,16 +21,36 @@ class DatabaseWrapper {
     async init(): Promise<void> {
         return new Promise((resolve, reject) => {
             this.db.serialize(() => {
-                // Create users table
+                // Enable foreign key constraints
+                this.db.run('PRAGMA foreign_keys = ON');
+
+                // Create studios table
+                this.db.run(`
+                    CREATE TABLE IF NOT EXISTS studios (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name VARCHAR(100) UNIQUE NOT NULL,
+                        description TEXT,
+                        disabled INTEGER NOT NULL DEFAULT 0,
+                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                `, (err) => {
+                    if (err) {
+                        console.error('Error creating studios table:', err.message);
+                        return reject(err);
+                    }
+                });
+
+                // Create users table (redesigned)
                 this.db.run(`
                     CREATE TABLE IF NOT EXISTS users (
-                        id TEXT PRIMARY KEY,
-                        email TEXT UNIQUE NOT NULL,
-                        password TEXT NOT NULL,
-                        name TEXT NOT NULL,
-                        status INTEGER NOT NULL DEFAULT 0,
-                        created DATETIME NOT NULL,
-                        updated DATETIME NOT NULL
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username VARCHAR(50) UNIQUE NOT NULL,
+                        email VARCHAR(100) UNIQUE NOT NULL,
+                        password VARCHAR(255) NOT NULL,
+                        disabled INTEGER NOT NULL DEFAULT 0,
+                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                 `, (err) => {
                     if (err) {
@@ -38,38 +59,108 @@ class DatabaseWrapper {
                     }
                 });
 
-                // Create sessions table
+                // Create user_studios table
                 this.db.run(`
-                    CREATE TABLE IF NOT EXISTS sessions (
-                        id TEXT PRIMARY KEY,
-                        parentId TEXT,
-                        directory TEXT NOT NULL,
-                        title TEXT,
-                        created DATETIME NOT NULL,
-                        updated DATETIME NOT NULL,
-                        FOREIGN KEY (parentId) REFERENCES sessions(id)
+                    CREATE TABLE IF NOT EXISTS user_studios (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        studio_id INTEGER NOT NULL,
+                        role VARCHAR(50) NOT NULL,
+                        is_default BOOLEAN NOT NULL DEFAULT 0,
+                        is_owner BOOLEAN NOT NULL DEFAULT 0,
+                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (studio_id) REFERENCES studios(id) ON DELETE CASCADE
                     )
                 `, (err) => {
                     if (err) {
-                        console.error('Error creating sessions table:', err.message);
+                        console.error('Error creating user_studios table:', err.message);
                         return reject(err);
                     }
                 });
 
-                // Create files table
+                // Create user_tokens table
                 this.db.run(`
-                    CREATE TABLE IF NOT EXISTS files (
-                        id TEXT PRIMARY KEY,
-                        fileName TEXT NOT NULL,
-                        filePath TEXT NOT NULL,
-                        size INTEGER NOT NULL,
-                        mimetype TEXT NOT NULL,
-                        created DATETIME NOT NULL,
-                        updated DATETIME NOT NULL
+                    CREATE TABLE IF NOT EXISTS user_tokens (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        token VARCHAR(255) NOT NULL,
+                        expires DATETIME NOT NULL,
+                        disabled INTEGER NOT NULL DEFAULT 0,
+                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                     )
                 `, (err) => {
                     if (err) {
-                        console.error('Error creating files table:', err.message);
+                        console.error('Error creating user_tokens table:', err.message);
+                        return reject(err);
+                    }
+                });
+
+                // Create oc_sessions table (OpenCode sessions)
+                this.db.run(`
+                    CREATE TABLE IF NOT EXISTS oc_sessions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        session_id VARCHAR(128) UNIQUE NOT NULL,
+                        parent_id VARCHAR(128),
+                        directory VARCHAR(255) NOT NULL,
+                        title VARCHAR(255),
+                        disabled INTEGER NOT NULL DEFAULT 0,
+                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )
+                `, (err) => {
+                    if (err) {
+                        console.error('Error creating oc_sessions table:', err.message);
+                        return reject(err);
+                    }
+                });
+
+                // Create applications table
+                this.db.run(`
+                    CREATE TABLE IF NOT EXISTS applications (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        type VARCHAR(50) NOT NULL,
+                        name VARCHAR(100) UNIQUE NOT NULL,
+                        description TEXT,
+                        icon VARCHAR(255),
+                        status VARCHAR(50) NOT NULL DEFAULT 'processing',
+                        disabled INTEGER NOT NULL DEFAULT 0,
+                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )
+                `, (err) => {
+                    if (err) {
+                        console.error('Error creating applications table:', err.message);
+                        return reject(err);
+                    }
+                });
+
+                // Create app_files table (application files)
+                this.db.run(`
+                    CREATE TABLE IF NOT EXISTS app_files (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        application_id INTEGER NOT NULL,
+                        name VARCHAR(255) NOT NULL,
+                        path VARCHAR(1024) NOT NULL,
+                        size BIGINT NOT NULL,
+                        type VARCHAR(50) NOT NULL,
+                        disabled INTEGER NOT NULL DEFAULT 0,
+                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE
+                    )
+                `, (err) => {
+                    if (err) {
+                        console.error('Error creating app_files table:', err.message);
                         return reject(err);
                     }
                 });
@@ -118,21 +209,26 @@ class DatabaseWrapper {
     }
 
     // Common database operations
-    async insert(table: string, data: any): Promise<void> {
+    async insert(table: string, data: any): Promise<number> {
         const columns = Object.keys(data).join(', ');
         const placeholders = Object.keys(data).map(() => '?').join(', ');
         const values = Object.values(data);
         
         const sql = `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`;
-        await this.run(sql, values);
+        const result = await this.run(sql, values);
+        return (result as sqlite3.RunResult).lastID || 0;
     }
 
     async selectOne(table: string, where: string, params: any[] = []): Promise<any> {
-        const sql = `SELECT * FROM ${table} WHERE ${where} LIMIT 1`;
+        const sql = `SELECT * FROM ${table} WHERE ${where}`;
         return await this.get(sql, params);
     }
 
-    async selectAll(table: string, where: string = '1=1', params: any[] = [], orderBy: string = ''): Promise<any[]> {
+    async selectAll(sql: string, params: any[] = []): Promise<any[]> {
+        return await this.all(sql, params);
+    }
+
+    async selectAllFrom(table: string, where: string = '1=1', orderBy: string = '', params: any[] = []): Promise<any[]> {
         let sql = `SELECT * FROM ${table} WHERE ${where}`;
         if (orderBy) {
             sql += ` ORDER BY ${orderBy}`;
@@ -140,11 +236,20 @@ class DatabaseWrapper {
         return await this.all(sql, params);
     }
 
-    async update(table: string, data: any, where: string, params: any[] = []): Promise<void> {
+    async queryOne(sql: string, params: any[] = []): Promise<any> {
+        return await this.get(sql, params);
+    }
+
+    async queryAll(sql: string, params: any[] = []): Promise<any[]> {
+        return await this.all(sql, params);
+    }
+
+    async update(table: string, data: any, where: string, params: any[] = []): Promise<number> {
         const setClause = Object.keys(data).map(key => `${key} = ?`).join(', ');
         const values = [...Object.values(data), ...params];
         const sql = `UPDATE ${table} SET ${setClause} WHERE ${where}`;
-        await this.run(sql, values);
+        const result = await this.run(sql, values);
+        return (result as sqlite3.RunResult).changes || 0;
     }
 
     async delete(table: string, where: string, params: any[] = []): Promise<number> {

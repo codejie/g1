@@ -12,6 +12,7 @@
   "email": "邮箱",
   "password": "密码",
   "name": "姓名",
+  "username": "用户名",
   "sign_in": "登录",
   "dont_have_account": "没有账号? 注册",
   "already_have_account": "已有账号? 登录",
@@ -55,5 +56,28 @@
     "workspace": "工作空间",
     "deployments": "部署发布",
     "monetization": "应用变现"
+  },
+  "workspace": {
+    "create_app_title": "创建新应用",
+    "app_description_placeholder": "描述您的应用需求（例如：一个销售复古服装的电商应用）。",
+    "create_app_button": "创建应用",
+    "chat_input_placeholder": "输入您的消息...",
+    "send_chat_button": "发送",
+    "finish_chat_button": "结束聊天并创建应用",
+    "app_list_title": "我的应用",
+    "list_view": "列表视图",
+    "card_view": "卡片视图",
+    "app_name": "应用名称",
+    "created_time": "创建时间",
+    "description": "描述",
+    "created_on": "创建于",
+    "previous": "上一页",
+    "next": "下一页",
+    "page": "页",
+    "ai_initial_response": "感谢您的请求！我需要更多细节来创建您的应用。这个应用的目标用户是谁？",
+    "ai_chat_response_prefix": "好的。关于应用概念",
+    "ai_chat_response_suffix": "我将继续生成初始结构。您还有其他需要补充的吗？",
+    "new_app_description": "新创建的应用",
+    "cancel_chat_button": "取消"
   }
 }
