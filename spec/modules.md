@@ -51,6 +51,7 @@ OpenCode 模块负责管理系统中的 OpenCode 会话信息和 OpenCode 相关
 ### OpenCode 模块的 API 路由
 - `/oc/create-session`: 创建 OpenCode 会话接口, `user_id` 从 JWT 中获取，返回会话 ID，创建新的会话，前一个会话将`disabled`设置为1。
 - `/oc/get-session`: 获取 OpenCode 会话信息接口， `user_id` 从 JWT 中获取，返回最近的会话（最后更新时间最新的）信息。
+- `/oc/message`: 会话交互消息接口，`user_id` 从 JWT 中获取，接收和转发会话消息到 OpenCode， 记录会话消息。
 
 ## Applications 模块
 Applications 模块负责管理系统中的应用程序信息和应用程序相关操作。该模块涉及以下数据库表

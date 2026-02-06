@@ -50,7 +50,7 @@ export const createApplication = async (request: FastifyRequest<{ Body: CreateAp
         disabled: 0
     });
 
-    return sendSuccess(reply, { application }, RESPONSE_CODES.HTTP_CREATED);
+    return sendSuccess(reply, { application });
 };
 
 // Get Application handler

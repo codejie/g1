@@ -70,6 +70,8 @@ export const RESPONSE_CODES = {
   // OpenCode module specific codes (-300s)
   OC_SESSION_NOT_FOUND: -300,
   OC_SESSION_ALREADY_EXISTS: -301,
+  OC_MESSAGE_NOT_FOUND: -302,
+  OC_MESSAGE_CREATE_FAILED: -303,
 
   // Application module specific codes (-400s)
   APPLICATION_NOT_FOUND: -400,

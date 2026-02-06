@@ -31,8 +31,6 @@ import type {
   DeleteUserRequest,
   DeleteUserResult,
 } from '../types/user'
-import type { ListResult } from '../types/common'
-import type { User } from '../types/user'
 
 // User API Service
 const userService = {
@@ -112,8 +110,8 @@ const userService = {
 
   getUserList: async (
     usersData?: GetUsersRequest,
-  ): Promise<ListResult<User>> => {
-    return await api.post<ListResult<User>>('/user/list', usersData)
+  ): Promise<GetUsersResponse> => {
+    return await api.post<GetUsersResponse>('/user/list', usersData)
   },
 
   updateUser: async (

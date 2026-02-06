@@ -1,17 +1,14 @@
 import { OCSession } from '../../types/oc';
 import { db } from '../../config/database';
-import { v4 as uuidv4 } from 'uuid';
 
 export class OCSessionModel {
-    static async create(data: Omit<OCSession, 'id' | 'created' | 'updated' | 'session_id'>): Promise<OCSession> {
-        const sessionId = uuidv4();
-        
+    static async create(data: Omit<OCSession, 'id' | 'created' | 'updated'>): Promise<OCSession> {
         // Disable previous sessions for this user
         await db.update('oc_sessions', { disabled: 1, updated: new Date() }, 'user_id = ? AND disabled = 0', [data.user_id]);
 
         const ocSession: Omit<OCSession, 'id' | 'created' | 'updated'> = {
             user_id: data.user_id,
-            session_id: sessionId,
+            session_id: data.session_id,
             parent_id: data.parent_id,
             directory: data.directory,
             title: data.title,

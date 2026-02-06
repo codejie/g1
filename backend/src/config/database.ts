@@ -120,6 +120,24 @@ class DatabaseWrapper {
                     }
                 });
 
+                // Create oc_messages table (OpenCode session messages)
+                this.db.run(`
+                    CREATE TABLE IF NOT EXISTS oc_messages (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        session_id VARCHAR(128) NOT NULL,
+                        message TEXT NOT NULL,
+                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (session_id) REFERENCES oc_sessions(session_id) ON DELETE CASCADE
+                    )
+                `, (err) => {
+                    if (err) {
+                        console.error('Error creating oc_messages table:', err.message);
+                        return reject(err);
+                    }
+                });
+
                 // Create applications table
                 this.db.run(`
                     CREATE TABLE IF NOT EXISTS applications (

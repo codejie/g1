@@ -1,7 +1,7 @@
 import { FastifyReply } from 'fastify';
 import { RESPONSE_CODES } from '../types/common';
 
-export function sendSuccess(reply: FastifyReply, data: any, httpCode: number = RESPONSE_CODES.HTTP_OK, message: string = 'Success'): void {
+export function sendSuccess(reply: FastifyReply, data: any, message: string = 'Success', httpCode: number = RESPONSE_CODES.HTTP_OK): void {
     const response = {
         code: RESPONSE_CODES.SUCCESS,
         message,
