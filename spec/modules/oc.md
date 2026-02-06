@@ -81,8 +81,9 @@
     session_id: number; // 会话ID
     agent_id?: number; // 处理消息的Agent ID，可选
     items: {
-        id: number; // 消息ID
+        id: string; // 消息ID
         role: string; // 消息角色，如"user", "assistant", "system"等
+        type: string; // 消息类型，如"text", "image", "file"等
         content: string; // 消息内容
         created: string; // 消息创建时间
     }

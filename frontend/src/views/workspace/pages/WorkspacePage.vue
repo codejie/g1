@@ -223,6 +223,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ocService from '../../../services/oc'
 
 const { t } = useI18n()
 
@@ -240,6 +241,7 @@ interface ChatMessage {
 
 const appDescription = ref('')
 const showChat = ref(false)
+const sessionId = ref<number | null>(null)
 const chatMessages = ref<ChatMessage[]>([])
 const userChatMessage = ref('')
 const viewMode = ref<'list' | 'card'>('list') // 'list' or 'card'
@@ -307,32 +309,58 @@ const paginatedApps = computed(() => {
   return mockApps.value.slice(start, end)
 })
 
-const handleCreateApp = () => {
+const handleCreateApp = async () => {
   if (appDescription.value.trim()) {
-    showChat.value = true
-    chatMessages.value.push({ sender: 'user', text: appDescription.value })
-    // Simulate AI response
-    setTimeout(() => {
-      chatMessages.value.push({
-        sender: 'ai',
-        text: t('workspace.ai_initial_response'),
+    try {
+      const response = await ocService.createSession({
+        title: 'app_web',
+        extra: { description: appDescription.value },
       })
-    }, 1000)
+      sessionId.value = response.session_id
+      showChat.value = true
+      chatMessages.value.push({ sender: 'user', text: appDescription.value })
+      // Simulate AI response
+      setTimeout(() => {
+        chatMessages.value.push({
+          sender: 'ai',
+          text: t('workspace.ai_initial_response'),
+        })
+      }, 1000)
+    } catch (error) {
+      console.error('Failed to create session:', error)
+    }
   }
 }
 
-const sendChatMessage = () => {
-  if (userChatMessage.value.trim()) {
-    chatMessages.value.push({ sender: 'user', text: userChatMessage.value })
+const sendChatMessage = async () => {
+  if (userChatMessage.value.trim() && sessionId.value !== null) {
     const userMsg = userChatMessage.value
+    chatMessages.value.push({ sender: 'user', text: userMsg })
     userChatMessage.value = ''
-    // Simulate AI response
-    setTimeout(() => {
+
+    try {
+      const response = await ocService.sendSessionMessage({
+        session_id: sessionId.value,
+        type: 'text',
+        content: userMsg,
+      })
+
+      // Convert response data to string as requested
+      const aiResponseText = response.items
+        .map((item: any) => item.content)
+        .join('\n')
+
       chatMessages.value.push({
         sender: 'ai',
-        text: `${t('workspace.ai_chat_response_prefix')} "${userMsg}". ${t('workspace.ai_chat_response_suffix')}`,
+        text: aiResponseText,
       })
-    }, 1000)
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      chatMessages.value.push({
+        sender: 'ai',
+        text: 'Error: Failed to get response from AI.',
+      })
+    }
   }
 }
 

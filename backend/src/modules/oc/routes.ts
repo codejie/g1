@@ -1,10 +1,10 @@
 import { FastifyInstance } from 'fastify';
 import * as ocHandlers from './handlers';
-import * as messageHandlers from './message-handlers';
 import { authenticate } from '../../middleware/auth';
 
 export default async function (fastify: FastifyInstance) {
-    fastify.post('/oc/create-session', {
+    // Create Session
+    fastify.post('/oc/session/create', {
         preHandler: [authenticate],
         schema: {
             description: 'Create OpenCode session',
@@ -13,9 +13,9 @@ export default async function (fastify: FastifyInstance) {
             body: {
                 type: 'object',
                 properties: {
-                    parent_id: { type: 'string', description: 'Parent session ID (optional)' },
-                    directory: { type: 'string', description: 'Session directory path' },
-                    title: { type: 'string', description: 'Session title' }
+                    type: { type: 'number', enum: [0, 1, 2], description: 'Session type (0/general, 1/coding, 2/debugging)' },
+                    title: { type: 'string', description: 'Session title' },
+                    extra: { type: 'object', description: 'Additional optional parameters' }
                 }
             },
             response: {
@@ -26,22 +26,11 @@ export default async function (fastify: FastifyInstance) {
                         message: { type: 'string' },
                         data: {
                             type: 'object',
-                            nullable: true,
                             properties: {
-                                session: {
-                                    type: 'object',
-                                    properties: {
-                                        id: { type: 'number' },
-                                        user_id: { type: 'number' },
-                                        session_id: { type: 'string' },
-                                        parent_id: { type: 'string' },
-                                        directory: { type: 'string' },
-                                        title: { type: 'string' },
-                                        disabled: { type: 'number' },
-                                        created: { type: 'string', format: 'date-time' },
-                                        updated: { type: 'string', format: 'date-time' }
-                                    }
-                                }
+                                session_id: { type: 'number' },
+                                type: { type: 'number' },
+                                title: { type: 'string' },
+                                agent_id: { type: 'number' }
                             }
                         }
                     }
@@ -50,98 +39,21 @@ export default async function (fastify: FastifyInstance) {
         }
     }, ocHandlers.createOCSession);
 
-    fastify.post('/oc/get-session', {
+    // Update Session
+    fastify.post('/oc/session/update', {
         preHandler: [authenticate],
         schema: {
-            description: 'Get latest OpenCode session',
-            tags: ['OpenCode'],
-            security: [{ bearerAuth: [] }],
-            body: {
-                type: 'object'
-            },
-            response: {
-                200: {
-                    type: 'object',
-                    properties: {
-                        code: { type: 'number' },
-                        message: { type: 'string' },
-                        data: {
-                            type: 'object',
-                            nullable: true,
-                            properties: {
-                                session: {
-                                    type: 'object',
-                                    properties: {
-                                        id: { type: 'number' },
-                                        user_id: { type: 'number' },
-                                        session_id: { type: 'string' },
-                                        parent_id: { type: 'string' },
-                                        directory: { type: 'string' },
-                                        title: { type: 'string' },
-                                        disabled: { type: 'number' },
-                                        created: { type: 'string', format: 'date-time' },
-                                        updated: { type: 'string', format: 'date-time' }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }, ocHandlers.getOCSession);
-
-    fastify.post('/oc/messages', {
-        preHandler: [authenticate],
-        schema: {
-            description: 'Create a new message',
+            description: 'Update OpenCode session parameters',
             tags: ['OpenCode'],
             security: [{ bearerAuth: [] }],
             body: {
                 type: 'object',
-                required: ['session_id', 'message'],
+                required: ['session_id'],
                 properties: {
-                    session_id: { type: 'string', description: 'Session ID' },
-                    message: { type: 'string', description: 'Message content' }
-                }
-            },
-            response: {
-                201: {
-                    type: 'object',
-                    properties: {
-                        code: { type: 'number' },
-                        message: { type: 'string' },
-                        data: {
-                            type: 'object',
-                            properties: {
-                                message: {
-                                    type: 'object',
-                                    properties: {
-                                        id: { type: 'number' },
-                                        user_id: { type: 'number' },
-                                        session_id: { type: 'string' },
-                                        message: { type: 'string' },
-                                        created: { type: 'string', format: 'date-time' }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }, messageHandlers.createMessage);
-
-    fastify.get('/oc/messages/:id', {
-        preHandler: [authenticate],
-        schema: {
-            description: 'Get a message by ID',
-            tags: ['OpenCode'],
-            security: [{ bearerAuth: [] }],
-            params: {
-                type: 'object',
-                properties: {
-                    id: { type: 'number' }
+                    session_id: { type: 'number', description: 'Session ID' },
+                    type: { type: 'number', enum: [0, 1, 2], description: 'Session type' },
+                    app_type: { type: 'number', enum: [0, 1, 2, 3], description: 'Application type (0/web, 1/android, 2/ios, 3/mobile)' },
+                    extra: { type: 'object', description: 'Additional optional parameters' }
                 }
             },
             response: {
@@ -153,41 +65,31 @@ export default async function (fastify: FastifyInstance) {
                         data: {
                             type: 'object',
                             properties: {
-                                message: {
-                                    type: 'object',
-                                    properties: {
-                                        id: { type: 'number' },
-                                        user_id: { type: 'number' },
-                                        session_id: { type: 'string' },
-                                        message: { type: 'string' },
-                                        created: { type: 'string', format: 'date-time' }
-                                    }
-                                }
+                                session_id: { type: 'number' },
+                                type: { type: 'number' },
+                                agent_id: { type: 'number' }
                             }
                         }
                     }
                 }
             }
         }
-    }, messageHandlers.getMessage);
+    }, ocHandlers.updateOCSession);
 
-    fastify.get('/oc/messages', {
+    // Send Session Message
+    fastify.post('/oc/session/message', {
         preHandler: [authenticate],
         schema: {
-            description: 'List messages',
+            description: 'Send message to OpenCode session',
             tags: ['OpenCode'],
             security: [{ bearerAuth: [] }],
-            querystring: {
+            body: {
                 type: 'object',
+                required: ['session_id', 'content'],
                 properties: {
-                    session_id: { type: 'string' },
-                    page_info: {
-                        type: 'object',
-                        properties: {
-                            page: { type: 'number' },
-                            size: { type: 'number' }
-                        }
-                    }
+                    session_id: { type: 'number', description: 'Session ID' },
+                    content: { type: 'string', description: 'Message content' },
+                    extra: { type: 'object', description: 'Additional optional parameters' }
                 }
             },
             response: {
@@ -199,25 +101,19 @@ export default async function (fastify: FastifyInstance) {
                         data: {
                             type: 'object',
                             properties: {
-                                messages: {
+                                session_id: { type: 'number' },
+                                agent_id: { type: 'number' },
+                                items: {
                                     type: 'array',
                                     items: {
                                         type: 'object',
                                         properties: {
-                                            id: { type: 'number' },
-                                            user_id: { type: 'number' },
-                                            session_id: { type: 'string' },
-                                            message: { type: 'string' },
-                                            created: { type: 'string', format: 'date-time' }
+                                            id: { type: 'string' },
+                                            role: { type: 'string' },
+                                            type: { type: 'string' },
+                                            content: { type: 'string' },
+                                            created: { type: 'string' }
                                         }
-                                    }
-                                },
-                                page_info: {
-                                    type: 'object',
-                                    properties: {
-                                        page: { type: 'number' },
-                                        size: { type: 'number' },
-                                        total: { type: 'number' }
                                     }
                                 }
                             }
@@ -226,35 +122,5 @@ export default async function (fastify: FastifyInstance) {
                 }
             }
         }
-    }, messageHandlers.listMessages);
-
-    fastify.delete('/oc/messages/:id', {
-        preHandler: [authenticate],
-        schema: {
-            description: 'Delete a message',
-            tags: ['OpenCode'],
-            security: [{ bearerAuth: [] }],
-            params: {
-                type: 'object',
-                properties: {
-                    id: { type: 'number' }
-                }
-            },
-            response: {
-                200: {
-                    type: 'object',
-                    properties: {
-                        code: { type: 'number' },
-                        message: { type: 'string' },
-                        data: {
-                            type: 'object',
-                            properties: {
-                                success: { type: 'boolean' }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }, messageHandlers.deleteMessage);
+    }, ocHandlers.sendSessionMessage);
 }

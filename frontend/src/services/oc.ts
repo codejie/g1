@@ -1,18 +1,14 @@
 import api from './api'
-import type {
-  CreateOCSessionRequest,
-  CreateOCSessionResult,
-  GetOCSessionResult,
-} from '../types/oc'
+import type { CreateOCSessionRequest, OCSessionResponse, SendSessionMessageRequest, SessionMessageResponse } from '../types/oc'
 
 const ocService = {
-  createSession: async (data: CreateOCSessionRequest): Promise<CreateOCSessionResult> => {
-    return await api.post<CreateOCSessionResult>('/oc/create-session', data)
+  createSession: async (data: CreateOCSessionRequest): Promise<OCSessionResponse> => {
+    return await api.post<OCSessionResponse>('/oc/session/create', data)
   },
 
-  getSession: async (): Promise<GetOCSessionResult> => {
-    return await api.post<GetOCSessionResult>('/oc/get-session')
-  },
+  sendSessionMessage: async (data: SendSessionMessageRequest): Promise<SessionMessageResponse> => {
+    return await api.post<SessionMessageResponse>('/oc/session/message', data)
+  }
 }
 
 export default ocService
