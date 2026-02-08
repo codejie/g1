@@ -123,4 +123,52 @@ export default async function (fastify: FastifyInstance) {
             }
         }
     }, ocHandlers.sendSessionMessage);
+
+    // Skills Callback
+    fastify.post('/oc/skills/callback', {
+        schema: {
+            description: 'Receive callback data from OpenCode Skills module',
+            tags: ['OpenCode'],
+            body: {
+                type: 'object',
+                required: ['skill_id', 'skill_version', 'session_id', 'type', 'data'],
+                properties: {
+                    skill_id: { type: 'string', description: 'Skill ID' },
+                    skill_version: { type: 'string', description: 'Skill version' },
+                    session_id: { type: 'number', description: 'Session ID' },
+                    type: { type: 'string', description: 'Data type' },
+                    data: { type: 'object', description: 'Callback data' }
+                }
+            },
+            response: {
+                200: {
+                    type: 'object',
+                    properties: {
+                        code: { type: 'number' },
+                        message: { type: 'string' },
+                        result: { type: 'object' }
+                    }
+                }
+            }
+        }
+    }, ocHandlers.skillsCallback);
+
+    // SSE Stream
+    fastify.get('/oc/session/sse', {
+        preHandler: [authenticate],
+        schema: {
+            description: 'Server-Sent Events stream for real-time updates',
+            tags: ['OpenCode'],
+            security: [{ bearerAuth: [] }],
+            querystring: {
+                type: 'object',
+                required: ['session_id'],
+                properties: {
+                    session_id: { type: 'number', description: 'Session ID' },
+                    agent_id: { type: 'number', description: 'Agent ID (optional)' },
+                    skill_id: { type: 'string', description: 'Skill ID (optional)' }
+                }
+            }
+        }
+    }, ocHandlers.sseStream);
 }

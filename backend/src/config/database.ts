@@ -138,6 +138,24 @@ class DatabaseWrapper {
                     }
                 });
 
+                // Create oc_skill_callbacks table (OpenCode skill callbacks)
+                this.db.run(`
+                    CREATE TABLE IF NOT EXISTS oc_skill_callbacks (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        skill_id VARCHAR(128) NOT NULL,
+                        skill_version VARCHAR(64) NOT NULL,
+                        session_id INTEGER NOT NULL,
+                        type VARCHAR(64) NOT NULL,
+                        data TEXT NOT NULL,
+                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                `, (err) => {
+                    if (err) {
+                        console.error('Error creating oc_skill_callbacks table:', err.message);
+                        return reject(err);
+                    }
+                });
+
                 // Create applications table
                 this.db.run(`
                     CREATE TABLE IF NOT EXISTS applications (

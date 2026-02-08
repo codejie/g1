@@ -347,7 +347,7 @@ const sendChatMessage = async () => {
 
       // Convert response data to string as requested
       const aiResponseText = response.items
-        .map((item: any) => item.content)
+        .map((item: any) => `${item.type || '<>'}: ${item.content || '[]'}`)
         .join('\n')
 
       chatMessages.value.push({

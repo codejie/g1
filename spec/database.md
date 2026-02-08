@@ -48,20 +48,21 @@
 - `user_id` (INT, 外键): 关联的用户ID，引用`users`表的`id`
 - `session_id` (VARCHAR(128), 唯一): 会话标识符
 - `parent_id` (VARCHAR(128), 可空): 父会话ID
-- `directory` (VARCHAR(251285)): 会话目录
-- `title` (VARCHAR(255)): 会话标题
-- `disabled` (INT): 会话状态，0表示活跃，1表示已结束
+- `directory` (VARCHAR(128)， 可空): 会话目录
+- `title` (VARCHAR(128)， 可空): 会话标题
+- `type` (INT): 会话类型，如"0/general", "1/coding", "2/debugging"等
+- `agent_id` (INT): 处理消息的Agent ID，缺省为0表示未指定
+- `disabled` (INT): 会话状态，0表示活跃，1表示已结束, 缺省为0
 - `created` (TIMESTAMP): 会话创建时间，默认值为当前时间
-- `updated` (TIMESTAMP): 会话最后更新时间， 默认值为当前时间
 
-### OpenCode Messages 表 (oc_messages)
-存储会话消息信息。
+<!-- ### OpenCode Messages 表 (oc_messages)
+存储会话消息信息。（以session_id方式存储消息内容，消息内容以文件形式存储在服务器上）
 - `id` (INT, 主键, 自增): 消息唯一标识符
 - `session_id` (VARCHAR(128), 外键): 关联的会话ID，引用`oc_sessions`表的`id`
+- `record_id` (VARCHAR(128)): 关联的记录ID，消息信息以文件方式存储
 - `role` (VARCHAR(50)): 消息角色，如"user", "assistant", "system"等
-- `user_id` (INT, 外键, 可空): 关联的用户ID，引用`users`表的`id`
 - `content` (TEXT): 消息内容
-- `created` (TIMESTAMP): 记录创建时间，默认值为当前时间
+- `created` (TIMESTAMP): 记录创建时间，默认值为当前时间 -->
 
 ## Applications 表 (applications)
 存储应用程序信息。
