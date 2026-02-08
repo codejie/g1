@@ -78,6 +78,20 @@
     "ai_chat_response_prefix": "好的。关于应用概念",
     "ai_chat_response_suffix": "我将继续生成初始结构。您还有其他需要补充的吗？",
     "new_app_description": "新创建的应用",
-    "cancel_chat_button": "取消"
+    "cancel_chat_button": "取消",
+    "new": {
+      "title": "你想创建什么应用？",
+      "webApp": "Web应用",
+      "iosApp": "iOS应用",
+      "androidApp": "Android应用",
+      "miniProgramApp": "mquanbini-program应用",
+      "completed": "已完成",
+      "inProgress": "建造中",
+      "listView": "list view",
+      "cardView": "card view",
+      "completedListPlaceholder": "这里显示已完成的应用列表。",
+      "inProgressListPlaceholder": "这里显示正在建造中的应用列表。",
+      "back": "返回"
+    }
   }
 }

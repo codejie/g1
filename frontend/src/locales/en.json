@@ -78,6 +78,20 @@
     "ai_chat_response_prefix": "Understood. For the app concept of",
     "ai_chat_response_suffix": "I will proceed with generating the initial structure. Is there anything else you'd like to add?",
     "new_app_description": "Newly created application",
-    "cancel_chat_button": "Cancel"
+    "cancel_chat_button": "Cancel",
+    "new": {
+      "title": "What application do you want to create?",
+      "webApp": "Web App",
+      "iosApp": "iOS App",
+      "androidApp": "Android App",
+      "miniProgramApp": "Mini-program App",
+      "completed": "Completed",
+      "inProgress": "In Progress",
+      "listView": "List View",
+      "cardView": "Card View",
+      "completedListPlaceholder": "The list of completed applications will be displayed here.",
+      "inProgressListPlaceholder": "The list of applications in progress will be displayed here.",
+      "back": "Back"
+    }
   }
 }

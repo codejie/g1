@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-100 flex flex-col">
     <header class="bg-blue-600 text-white p-4 shadow-md">
-      <nav class="container mx-auto flex justify-between items-center">
+      <nav class="px-4 flex justify-between items-center">
         <router-link to="/" class="text-2xl font-bold">{{
           $t('app_title')
         }}</router-link>
@@ -45,7 +45,7 @@
         </div>
       </nav>
     </header>
-    <main class="flex-grow container mx-auto p-4">
+    <main class="flex-grow">
       <router-view />
     </main>
   </div>
