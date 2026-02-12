@@ -2,8 +2,10 @@ import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import type { Response } from '../types/common' // Import the Response type
 
+export const BASE_URL = 'http://localhost:3000/api'
+
 const api = axios.create({
-  baseURL: 'http://localhost:3000/api', // Added /api prefix
+  baseURL: BASE_URL,
 })
 
 api.interceptors.request.use((config) => {
@@ -29,8 +31,8 @@ api.interceptors.response.use(
       // If code is not 0, it's a business error
       // Create an Error object with the message from the backend
       const error = new Error(res.message || 'Unknown API error')
-      // Attach the original response for more details if needed
-      ;(error as any).response = response
+        // Attach the original response for more details if needed
+        ; (error as any).response = response
       return Promise.reject(error)
     }
   },
@@ -39,7 +41,7 @@ api.interceptors.response.use(
     // If the error has a response from the server, extract its message
     if (error.response && error.response.data && error.response.data.message) {
       const apiError = new Error(error.response.data.message)
-      ;(apiError as any).response = error.response
+        ; (apiError as any).response = error.response
       return Promise.reject(apiError)
     }
     // For network errors or other uncaught errors

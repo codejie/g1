@@ -67,7 +67,20 @@ export default async function (fastify: FastifyInstance) {
                             properties: {
                                 session_id: { type: 'number' },
                                 type: { type: 'number' },
-                                agent_id: { type: 'number' }
+                                agent_id: { type: 'number' },
+                                items: {
+                                    type: 'array',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            id: { type: 'string' },
+                                            role: { type: 'string' },
+                                            type: { type: 'string' },
+                                            content: { type: 'string' },
+                                            created: { type: 'string' }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -88,6 +101,7 @@ export default async function (fastify: FastifyInstance) {
                 required: ['session_id', 'content'],
                 properties: {
                     session_id: { type: 'number', description: 'Session ID' },
+                    type: { type: 'string', description: 'Message type (e.g., text, image)' },
                     content: { type: 'string', description: 'Message content' },
                     extra: { type: 'object', description: 'Additional optional parameters' }
                 }
@@ -131,11 +145,12 @@ export default async function (fastify: FastifyInstance) {
             tags: ['OpenCode'],
             body: {
                 type: 'object',
-                required: ['skill_id', 'skill_version', 'session_id', 'type', 'data'],
+                required: ['session_id', 'agent_id', 'event'],
                 properties: {
-                    skill_id: { type: 'string', description: 'Skill ID' },
-                    skill_version: { type: 'string', description: 'Skill version' },
-                    session_id: { type: 'number', description: 'Session ID' },
+                    session_id: { type: 'string', description: 'Session ID' },
+                    agent_id: { type: 'number', description: 'Agent ID' },
+                    skill_id: { type: 'string', description: 'Skill ID (optional)' },
+                    event: { type: 'string', description: 'Event type' },
                     type: { type: 'string', description: 'Data type' },
                     data: { type: 'object', description: 'Callback data' }
                 }
@@ -166,7 +181,7 @@ export default async function (fastify: FastifyInstance) {
                 properties: {
                     session_id: { type: 'number', description: 'Session ID' },
                     agent_id: { type: 'number', description: 'Agent ID (optional)' },
-                    skill_id: { type: 'string', description: 'Skill ID (optional)' }
+                    agent_name: { type: 'string', description: 'Agent name (optional)' }
                 }
             }
         }

@@ -98,9 +98,10 @@
 - 请求数据结构:
 ```typescript
 {
-    skill_id: string; // 技能ID
-    skill_version: string; // 技能版本
-    session_id: number; // 会话ID
+    session_id: string; // 会话ID
+    agent_id: number; // Agent ID
+    skill_id?: string; // 技能ID
+    event: string; // 事件类型，如"message", "command", "skill"等
     type: string; // 数据类型
     data: any; // 数据，具体内容根据技能定义而定
 }
@@ -123,7 +124,7 @@
 {
     session_id: number; // 会话ID
     agent_id?: number; // 处理消息的Agent ID，可选
-    skill_id?: string; // 技能ID，可选
-    type: string; // 数据类型
+    agent_name?: string; // Agent名称，可选
+    type: string; // 数据类型，
     data: any; // 数据
 }

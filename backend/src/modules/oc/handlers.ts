@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { 
+import {
     CreateOCSessionRequest, CreateOCSessionResponse,
     UpdateOCSessionRequest, UpdateOCSessionResponse,
     SendSessionMessageRequest, SendSessionMessageResponse
@@ -11,10 +11,14 @@ import { randomUUID } from 'crypto';
 import { OCSessionModel, OCSkillCallbackModel } from './model';
 import fsPromises from 'fs/promises';
 import path from 'path';
+import { getAgentById, getAgentParts } from '../../agents';
 
 const OPENCODE_URL = config.OPENCODE_URL;
 const MESSAGE_DATA_DIR = path.join(process.cwd(), 'data', 'session_messages');
 const SKILL_CALLBACK_DATA_DIR = path.join(process.cwd(), 'data', 'skill_callbacks');
+
+// Map to store session_id to SSE connection relationship
+const sseConnections = new Map<number, FastifyReply>();
 
 // Forward request to OpenCode API
 async function forwardToOpenCode(url: URL, method: string, body: any): Promise<any> {
@@ -39,11 +43,11 @@ export const createOCSession = async (request: FastifyRequest<{ Body: CreateOCSe
 
     const userId = (request.user as any).id;
     const { type, title, extra } = request.body;
-    
+
     try {
         // Generate a unique session ID for database
         const dbSessionId = randomUUID();
-        
+
         // Forward to OpenCode to create session
         const openCodeSession: any = await forwardToOpenCode(new URL(`/session`, OPENCODE_URL), 'POST', {
             title: title || 'New Session',
@@ -94,37 +98,42 @@ export const updateOCSession = async (request: FastifyRequest<{ Body: UpdateOCSe
             return sendError(reply, RESPONSE_CODES.FORBIDDEN, 'Not authorized to update this session');
         }
 
-        // Build update data
-        const updateData: any = {};
-        if (type !== undefined) {
-            updateData.type = type;
-        }
-        if (extra?.agent_id !== undefined) {
-            updateData.agent_id = extra.agent_id;
-        }
-        if (extra?.title !== undefined) {
-            updateData.title = extra.title;
-        }
 
-        // Update in database
-        const updatedSession = await OCSessionModel.update(session_id, updateData);
+        let items: any[] = [];
+        // Get app_test agent and send command
+        const agent = getAgentById(1);
+        if (agent) {
+            const agentParts = getAgentParts(agent);
+            const commandBody = {
+                command: agent.skill_name,
+                arguments: `'session_id:${session.session_id}', 提取'session_id'，并显示`,
+                agent: agent.type,
+                model: agent.provider && agent.model ? `${agent.provider}/${agent.model}` : "opencode/kimi-k2.5-free",
+                parts: agentParts
+            };
 
-        // Forward to OpenCode if needed
-        try {
-            await forwardToOpenCode(new URL(`/session/${session.session_id}`, OPENCODE_URL), 'POST', {
-                type,
-                appType: app_type,
-                ...extra
-            });
-        } catch (openCodeError) {
-            // Log but don't fail if OpenCode update fails
-            console.error('Failed to update OpenCode session:', openCodeError);
+            const commandResponse = await forwardToOpenCode(
+                new URL(`/session/${session.session_id}/command`, OPENCODE_URL),
+                'POST',
+                commandBody
+            );
+
+            // Map response items similarly to sendSessionMessage
+            if (commandResponse && commandResponse.parts) {
+                items = commandResponse.parts.map((item: any) => ({
+                    id: item.id || randomUUID(),
+                    role: item.role || 'assistant',
+                    type: item.type || 'text',
+                    content: item.text || '',
+                    created: new Date().toISOString()
+                }));
+            }
         }
 
         return sendSuccess(reply, {
-            session_id: updatedSession!.id,
-            type: updatedSession!.type,
-            agent_id: updatedSession!.agent_id
+            session_id: session_id,
+            agent_id: agent.id,
+            items: items.length > 0 ? items : undefined
         });
     } catch (error: any) {
         return sendError(reply, RESPONSE_CODES.INTERNAL_ERROR, error?.message || 'Failed to update session');
@@ -163,8 +172,8 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
 
         // Forward message to OpenCode
         const openCodeMessage: any = await forwardToOpenCode(
-            new URL(`/session/${session.session_id}/message`, OPENCODE_URL), 
-            'POST', 
+            new URL(`/session/${session.session_id}/message`, OPENCODE_URL),
+            'POST',
             {
                 model: {
                     providerID: 'opencode',
@@ -194,7 +203,7 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
         const messageFilePath = path.join(MESSAGE_DATA_DIR, `${session_id}.json`);
         try {
             await fsPromises.mkdir(MESSAGE_DATA_DIR, { recursive: true });
-            
+
             let existingMessages: any[] = [];
             try {
                 const existingContent = await fsPromises.readFile(messageFilePath, 'utf-8');
@@ -223,64 +232,41 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
             items: items
         });
     } catch (error: any) {
-        return sendError(reply, RESPONSE_CODES.INTERNAL_ERROR,  error?.message || 'Failed to send message');
+        return sendError(reply, RESPONSE_CODES.INTERNAL_ERROR, error?.message || 'Failed to send message');
     }
 };
 
 // Skills Callback handler
 export const skillsCallback = async (request: FastifyRequest<{ Body: any }>, reply: FastifyReply) => {
-    const { skill_id, skill_version, session_id, type, data } = request.body as any;
+    const { session_id, agent_id, skill_id, event, type, data } = request.body as any;
 
     try {
         // Validate required fields
-        if (!skill_id || !skill_version || !session_id || !type) {
+        if (!session_id || !agent_id || !event) {
             return sendError(reply, RESPONSE_CODES.INVALID_REQUEST, 'Missing required fields');
         }
 
-        // Store callback data in database
-        const callback = await OCSkillCallbackModel.create({
-            skill_id,
-            skill_version,
-            session_id,
+        // Find the session to get the local session_id (session_id from OpenCode is a string)
+        const session = await OCSessionModel.findBySessionId(session_id);
+        if (!session) {
+            return sendError(reply, RESPONSE_CODES.NOT_FOUND, 'Session not found');
+        }
+        const agent = getAgentById(1);
+
+        // Notify client via SSE using the local session_id
+        const sent = sendSSEMessage(session.id, event, { 
+            session_id: session.id,
+            agent_id,
+            agent_name: agent?.name,
             type,
             data
         });
-
-        // Store callback data to file
-        const callbackFilePath = path.join(SKILL_CALLBACK_DATA_DIR, `${session_id}_${skill_id}.json`);
-        try {
-            await fsPromises.mkdir(SKILL_CALLBACK_DATA_DIR, { recursive: true });
-            
-            const callbackRecord = {
-                callback_id: callback.id,
-                skill_id,
-                skill_version,
-                session_id,
-                type,
-                data,
-                timestamp: callback.created.toISOString()
-            };
-
-            // Read existing data if file exists
-            let existingData: any[] = [];
-            try {
-                const existingContent = await fsPromises.readFile(callbackFilePath, 'utf-8');
-                existingData = JSON.parse(existingContent);
-            } catch {
-                existingData = [];
-            }
-
-            existingData.push(callbackRecord);
-            await fsPromises.writeFile(callbackFilePath, JSON.stringify(existingData, null, 2));
-        } catch (fileError) {
-            console.error('Failed to store callback data to file:', fileError);
-        }
 
         return sendSuccess(reply, {
             code: 0,
             message: 'Callback received successfully',
             result: {
-                callback_id: callback.id
+                sse_sent: sent
             }
         });
     } catch (error: any) {
@@ -288,14 +274,34 @@ export const skillsCallback = async (request: FastifyRequest<{ Body: any }>, rep
     }
 };
 
+/**
+ * Send SSE message to a specific session
+ * @param session_id Session ID
+ * @param event Event name
+ * @param data Event data
+ */
+export function sendSSEMessage(session_id: number, event: string, data: any) {
+    const reply = sseConnections.get(session_id);
+    if (reply) {
+        try {
+            reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+            return true;
+        } catch (error) {
+            console.error(`[SSE] Failed to send message to session ${session_id}:`, error);
+            sseConnections.delete(session_id);
+        }
+    }
+    return false;
+}
+
 // SSE handler
-export const sseStream = async (request: FastifyRequest<{ Querystring: { session_id: number; agent_id?: number; skill_id?: string } }>, reply: FastifyReply) => {
+export const sseStream = async (request: FastifyRequest<{ Querystring: { session_id: number; agent_id?: number; agent_name?: string } }>, reply: FastifyReply) => {
     if (!request.user) {
         return sendError(reply, RESPONSE_CODES.UNAUTHORIZED, 'Authentication required');
     }
 
     const userId = (request.user as any).id;
-    const { session_id, agent_id, skill_id } = request.query;
+    const { session_id, agent_id, agent_name } = request.query;
 
     try {
         // Find the session in database to verify ownership
@@ -325,7 +331,7 @@ export const sseStream = async (request: FastifyRequest<{ Querystring: { session
         const sseConnection = {
             session_id,
             agent_id: agent_id || session.agent_id,
-            skill_id,
+            agent_name,
             user_id: userId,
             connected_at: new Date().toISOString()
         };
@@ -333,18 +339,23 @@ export const sseStream = async (request: FastifyRequest<{ Querystring: { session
         // Log SSE connection
         console.log('[SSE] Client connected:', sseConnection);
 
+        // Store SSE connection in map
+        sseConnections.set(session_id, reply);
+
         // Send periodic heartbeat to keep connection alive
         const heartbeatInterval = setInterval(() => {
             try {
                 reply.raw.write(`:heartbeat\n\n`);
             } catch {
                 clearInterval(heartbeatInterval);
+                sseConnections.delete(session_id);
             }
         }, 30000);
 
         // Handle client disconnect
         request.raw.on('close', () => {
             clearInterval(heartbeatInterval);
+            sseConnections.delete(session_id);
             console.log('[SSE] Client disconnected:', { session_id, agent_id });
         });
 

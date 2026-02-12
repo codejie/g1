@@ -31,14 +31,14 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
 
         const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, JWT_SECRET) as any;
-        
+
         // Attach user info to request object
         request.user = {
             id: decoded.id,
             username: decoded.username,
             email: decoded.email
         };
-        
+
         return; // Success case - continue to handler
 
     } catch (err: any) {

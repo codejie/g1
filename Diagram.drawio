@@ -193,7 +193,7 @@
         <mxCell id="Q3dNXvhN9-pRuKXvC9c_-14" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
           <mxGeometry height="480" width="430" x="560" y="40" as="geometry" />
         </mxCell>
-        <mxCell id="Q3dNXvhN9-pRuKXvC9c_-15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="返回" vertex="1">
+        <mxCell id="Q3dNXvhN9-pRuKXvC9c_-15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="取消" vertex="1">
           <mxGeometry height="30" width="80" x="900" y="55" as="geometry" />
         </mxCell>
         <mxCell id="Q3dNXvhN9-pRuKXvC9c_-16" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">

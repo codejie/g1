@@ -28,13 +28,13 @@
           >
             <div
               :class="[
-                'p-2 rounded-lg inline-block',
+                'p-2 rounded-lg inline-block whitespace-pre-wrap',
                 message.sender === 'user' ? 'bg-blue-200' : 'bg-gray-200',
               ]"
               style="max-width: 80%"
               :style="{
-                marginLeft: message.sender === 'user' ? 'auto' : '0',
-                marginRight: message.sender === 'user' ? '0' : 'auto',
+                float: message.sender === 'user' ? 'right' : 'left',
+                clear: 'both'
               }"
             >
               <strong>{{ message.sender === 'user' ? 'You' : 'AI' }}:</strong>
@@ -43,19 +43,21 @@
           </div>
         </div>
         <div class="flex-shrink-0 p-4 border-t">
-          <div class="flex">
+          <div class="flex items-center">
             <textarea
               v-model="userChatMessage"
               rows="1"
-              class="flex-1 p-3 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="flex-1 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               :placeholder="
                 t('workspace.chat_input_placeholder', '输入您的消息...')
               "
               @keydown.enter.prevent="sendMessage"
+              :disabled="isInitializing"
             ></textarea>
             <button
               @click="sendMessage"
-              class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-r-md hover:bg-blue-700"
+              class="ml-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="isInitializing || !userChatMessage.trim()"
             >
               {{ t('workspace.send_chat_button', '发送') }}
             </button>
@@ -114,31 +116,134 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import ocService from '@/services/oc'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 const appType = ref('')
 const isPanelOpen = ref(true)
 const userChatMessage = ref('')
+const sessionId = ref<number | null>(null)
+const isInitializing = ref(true)
+let abortController: AbortController | null = null
 
 interface ChatMessage {
   sender: 'user' | 'ai'
   text: string
 }
 
-const chatMessages = ref<ChatMessage[]>([
-  { sender: 'ai', text: 'Hello! How can I help you build your app today?' },
-  { sender: 'user', text: 'I want to build a social media app.' },
-])
+const chatMessages = ref<ChatMessage[]>([])
 
-onMounted(() => {
+onMounted(async () => {
   if (typeof route.query.app_type === 'string') {
     appType.value = route.query.app_type
+  }
+
+  try {
+    isInitializing.value = true
+    // 1. Create Session (type 1 for coding)
+    const session = await ocService.createSession({ 
+      type: 1,
+      title: 'Coding Session'
+    })
+    sessionId.value = session.session_id
+
+    // 2. Establish SSE Connection using fetch with Authorization header
+    const sseUrl = ocService.getSSEUrl({ 
+      session_id: session.session_id
+    })
+    
+    abortController = new AbortController()
+    
+    const response = await fetch(sseUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`,
+        'Accept': 'text/event-stream'
+      },
+      signal: abortController.signal
+    })
+
+    if (!response.ok) {
+      throw new Error(`SSE connection failed: ${response.status}`)
+    }
+
+    // Process SSE stream
+    const reader = response.body?.getReader()
+    const decoder = new TextDecoder()
+
+    if (reader) {
+      const processStream = async () => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+
+            const chunk = decoder.decode(value, { stream: true })
+            const lines = chunk.split('\n')
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6)
+                try {
+                  const parsed = JSON.parse(data)
+                  console.log('Received SSE message:', parsed)
+                  // Handle incoming messages if needed
+                  // You can add logic here to update chatMessages based on the event type
+                } catch (e) {
+                  console.warn('Failed to parse SSE data:', e)
+                }
+              }
+            }
+          }
+        } catch (error: any) {
+          if (error.name !== 'AbortError') {
+            console.error('SSE stream error:', error)
+          }
+        }
+      }
+
+      processStream()
+    }
+
+    // 3. Update Session with app_type
+    const appTypeValue = parseInt(appType.value)
+    const updateResponse = await ocService.updateSession({
+      session_id: session.session_id,
+      app_type: isNaN(appTypeValue) ? 0 : (appTypeValue as any)
+    })
+    
+    // Process items from updateSession response
+    if (updateResponse.items && updateResponse.items.length > 0) {
+      const aiResponseText = updateResponse.items
+        .map((item: any) => `${item.type || '<>'}:  ${item.content || '[]'}`)
+        .join('\n')
+      
+      chatMessages.value.push({
+        sender: 'ai',
+        text: aiResponseText,
+      })
+    }
+    
+    console.log('OC Session initialized:', session.session_id)
+  } catch (error) {
+    console.error('Failed to initialize OC session:', error)
+  } finally {
+    isInitializing.value = false
+  }
+})
+
+onUnmounted(() => {
+  if (abortController) {
+    abortController.abort()
+    abortController = null
   }
 })
 
@@ -146,17 +251,34 @@ const goBack = () => {
   router.push({ name: 'workspace' })
 }
 
-const sendMessage = () => {
-  if (userChatMessage.value.trim()) {
-    chatMessages.value.push({ sender: 'user', text: userChatMessage.value })
+const sendMessage = async () => {
+  if (userChatMessage.value.trim() && sessionId.value !== null && !isInitializing.value) {
+    const userMsg = userChatMessage.value
+    chatMessages.value.push({ sender: 'user', text: userMsg })
     userChatMessage.value = ''
-    // Simulate AI response
-    setTimeout(() => {
+
+    try {
+      const response = await ocService.sendSessionMessage({
+        session_id: sessionId.value,
+        type: 'text',
+        content: userMsg,
+      })
+
+      const aiResponseText = response.items
+        .map((item: any) => `${item.type || '<>'}: ${item.content || '[]'}`)
+        .join('\n')
+
       chatMessages.value.push({
         sender: 'ai',
-        text: 'That sounds interesting! Tell me more.',
+        text: aiResponseText,
       })
-    }, 1000)
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      chatMessages.value.push({
+        sender: 'ai',
+        text: 'Error: Failed to get response from AI.',
+      })
+    }
   }
 }
 </script>

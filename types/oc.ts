@@ -7,8 +7,9 @@ export type OCAppType = 0 | 1 | 2 | 3 // 0/web, 1/android, 2/ios, 3/mobile
 export type OCSessionResponse = {
     session_id: number
     type: OCSessionType
-    title: string
+    title?: string
     agent_id?: number
+    items?: SessionMessageItem[]
 }
 
 // Database model type for OC Session
@@ -76,11 +77,12 @@ export interface SendSessionMessageResponse extends Response {
 
 // Skills Callback
 export interface SkillsCallbackRequest extends Request {
-    skill_id: string
-    skill_version: string
-    session_id: number
-    type: string
-    data: any
+    session_id: string
+    agent_id: number
+    skill_id?: string
+    event: string
+    type?: string
+    data?: any
 }
 
 export interface SkillsCallbackResponse extends Response {
@@ -114,6 +116,4 @@ export type SSEEvent = {
 
 export interface SSERequest extends Request {
     session_id: number
-    agent_id?: number
-    skill_id?: string
 }
