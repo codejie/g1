@@ -107,7 +107,31 @@
             <h2 v-if="isPanelOpen" class="text-xl font-bold">记录信息</h2>
           </div>
           <div v-if="isPanelOpen" class="flex-grow p-4 overflow-y-auto">
-            <p>这里是一些记录信息...</p>
+            <h3 class="text-lg font-semibold mb-3">消息记录</h3>
+            <div v-if="sseMessages.length === 0" class="text-gray-500 text-sm">
+              暂无消息
+            </div>
+            <div v-else class="space-y-3">
+              <div
+                v-for="(msg, index) in sseMessages"
+                :key="index"
+                class="bg-white p-3 rounded-lg shadow-sm border border-gray-200"
+              >
+                <div class="mb-2">
+                  <span class="text-xs font-semibold text-blue-600">事件类型:</span>
+                  <span class="text-sm ml-2">{{ msg.event }}</span>
+                </div>
+                <div v-if="msg.type" class="mb-2">
+                  <span class="text-xs font-semibold text-green-600">Type:</span>
+                  <span class="text-sm ml-2">{{ msg.type }}</span>
+                </div>
+                <div v-if="msg.data">
+                  <span class="text-xs font-semibold text-purple-600">Data:</span>
+                  <pre class="text-xs mt-1 p-2 bg-gray-50 rounded overflow-x-auto">{{ formatData(msg.data) }}</pre>
+                </div>
+                <div class="text-xs text-gray-400 mt-2">{{ msg.timestamp }}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -139,7 +163,15 @@ interface ChatMessage {
   text: string
 }
 
+interface SSEMessage {
+  event: string
+  type?: string
+  data?: any
+  timestamp: string
+}
+
 const chatMessages = ref<ChatMessage[]>([])
+const sseMessages = ref<SSEMessage[]>([])
 
 onMounted(async () => {
   if (typeof route.query.app_type === 'string') {
@@ -180,6 +212,7 @@ onMounted(async () => {
     const decoder = new TextDecoder()
 
     if (reader) {
+      let currentEvent = ''
       const processStream = async () => {
         try {
           while (true) {
@@ -190,13 +223,23 @@ onMounted(async () => {
             const lines = chunk.split('\n')
 
             for (const line of lines) {
-              if (line.startsWith('data: ')) {
+              if (line.startsWith('event: ')) {
+                currentEvent = line.slice(7).trim()
+              } else if (line.startsWith('data: ')) {
                 const data = line.slice(6)
                 try {
                   const parsed = JSON.parse(data)
                   console.log('Received SSE message:', parsed)
-                  // Handle incoming messages if needed
-                  // You can add logic here to update chatMessages based on the event type
+                  
+                  // Add to SSE messages panel
+                  sseMessages.value.push({
+                    event: currentEvent || 'message',
+                    type: parsed.type,
+                    data: parsed.data,
+                    timestamp: new Date().toLocaleTimeString('zh-CN')
+                  })
+                  
+                  currentEvent = '' // Reset for next message
                 } catch (e) {
                   console.warn('Failed to parse SSE data:', e)
                 }
@@ -249,6 +292,13 @@ onUnmounted(() => {
 
 const goBack = () => {
   router.push({ name: 'workspace' })
+}
+
+const formatData = (data: any): string => {
+  if (typeof data === 'string') {
+    return data
+  }
+  return JSON.stringify(data, null, 2)
 }
 
 const sendMessage = async () => {

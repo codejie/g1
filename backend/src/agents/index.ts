@@ -24,7 +24,7 @@ export const agents: Agent[] = [
         description: '测试Agent',
         version: '1',
         skill_name: 'session-tester',
-        arguments: '提取”session_id“',
+        arguments: '从上下文中获取"session id"信息，包括"command"消息的session_id或"message"消息的SessionID等， "session_id"将被后续操作使用。',
         provider: 'opencode',
         model: 'kimi-k2.5-free',
     }

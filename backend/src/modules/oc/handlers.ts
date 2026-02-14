@@ -106,7 +106,7 @@ export const updateOCSession = async (request: FastifyRequest<{ Body: UpdateOCSe
             const agentParts = getAgentParts(agent);
             const commandBody = {
                 command: agent.skill_name,
-                arguments: `'session_id:${session.session_id}', 提取'session_id'，并显示`,
+                arguments: `'session_id:${session.session_id}'。${agent.arguments || ''}`,
                 agent: agent.type,
                 model: agent.provider && agent.model ? `${agent.provider}/${agent.model}` : "opencode/kimi-k2.5-free",
                 parts: agentParts
