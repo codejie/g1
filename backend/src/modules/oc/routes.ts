@@ -145,11 +145,10 @@ export default async function (fastify: FastifyInstance) {
             tags: ['OpenCode'],
             body: {
                 type: 'object',
-                required: ['session_id', 'agent_id', 'event'],
+                required: ['session_id', 'skill_id', 'event'],
                 properties: {
                     session_id: { type: 'string', description: 'Session ID' },
-                    agent_id: { type: 'number', description: 'Agent ID' },
-                    skill_id: { type: 'string', description: 'Skill ID (optional)' },
+                    skill_id: { type: 'number', description: 'Skill ID' },
                     event: { type: 'string', description: 'Event type' },
                     type: { type: 'string', description: 'Data type' },
                     data: { type: 'object', description: 'Callback data' }
@@ -179,9 +178,7 @@ export default async function (fastify: FastifyInstance) {
                 type: 'object',
                 required: ['session_id'],
                 properties: {
-                    session_id: { type: 'number', description: 'Session ID' },
-                    agent_id: { type: 'number', description: 'Agent ID (optional)' },
-                    agent_name: { type: 'string', description: 'Agent name (optional)' }
+                    session_id: { type: 'number', description: 'Session ID' }
                 }
             }
         }

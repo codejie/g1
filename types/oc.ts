@@ -8,7 +8,7 @@ export type OCSessionResponse = {
     session_id: number
     type: OCSessionType
     title?: string
-    agent_id?: number
+    skill_id?: number
     items?: SessionMessageItem[]
 }
 
@@ -21,7 +21,7 @@ export type OCSession = {
     directory?: string
     title?: string
     type: number
-    agent_id: number
+    skill_id: number
     disabled: number
     created: Date
 }
@@ -67,7 +67,7 @@ export type SessionMessageItem = {
 
 export type SessionMessageResponse = {
     session_id: number
-    agent_id?: number
+    skill_id?: number
     items: SessionMessageItem[]
 }
 
@@ -78,8 +78,7 @@ export interface SendSessionMessageResponse extends Response {
 // Skills Callback
 export interface SkillsCallbackRequest extends Request {
     session_id: string
-    agent_id: number
-    skill_id?: string
+    skill_id: number
     event: string
     type?: string
     data?: any
@@ -95,23 +94,23 @@ export interface SkillsCallbackResponse extends Response {
 export type OCSkillCallback = {
     id: number
     skill_id: string
-    skill_version: string
-    session_id: number
+    session_id: string
+    event: string
     type: string
     data: any
     created: Date
 }
 
 // SSE Event types
-export type SSEEventType = 'message' | 'skill_update' | 'session_update' | 'error' | 'complete'
+export type SSEEventType = 'update' | 'finish' | 'error'
 
 export type SSEEvent = {
-    type: SSEEventType
+    // type: SSEEventType
     session_id: number
-    agent_id?: number
-    skill_id?: string
-    data: any
-    timestamp: string
+    skill_id: number
+    skill_name: string
+    type?: string
+    data?: any
 }
 
 export interface SSERequest extends Request {

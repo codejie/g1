@@ -9,7 +9,7 @@ export type OCSession = {
     directory?: string
     title?: string
     type: number
-    agent_id: number
+    skill_id: number
     disabled: number
     created: Date
 }
@@ -17,11 +17,11 @@ export type OCSession = {
 // OC Skill Callback type definition
 export type OCSkillCallbackModelType = {
     id: number
-    skill_id: string
-    skill_version: string
-    session_id: number
+    skill_id: number
+    session_id: string
+    event: string
     type: string
-    data: string
+    data: any
     created: Date
 }
 
@@ -38,7 +38,7 @@ export class OCSessionModel {
             directory: data.directory || null,
             title: data.title || null,
             type: data.type || 0,
-            agent_id: data.agent_id || 0,
+            skill_id: data.skill_id || 0,
             disabled: data.disabled || 0
         };
 
@@ -168,7 +168,7 @@ export class OCSessionModel {
             directory: row.directory || undefined,
             title: row.title || undefined,
             type: row.type,
-            agent_id: row.agent_id,
+            skill_id: row.skill_id,
             disabled: row.disabled,
             created: new Date(row.created)
         };
@@ -183,8 +183,8 @@ export class OCSkillCallbackModel {
     static async create(data: Omit<OCSkillCallbackModelType, 'id' | 'created'>): Promise<OCSkillCallbackModelType> {
         const callbackData = {
             skill_id: data.skill_id,
-            skill_version: data.skill_version,
             session_id: data.session_id,
+            event: data.event,
             type: data.type,
             data: typeof data.data === 'string' ? data.data : JSON.stringify(data.data)
         };
@@ -210,7 +210,7 @@ export class OCSkillCallbackModel {
     /**
      * Find callbacks by session ID
      */
-    static async findBySessionId(sessionId: number): Promise<OCSkillCallbackModelType[]> {
+    static async findBySessionId(sessionId: string): Promise<OCSkillCallbackModelType[]> {
         const rows = await db.selectAllFrom('oc_skill_callbacks', 'session_id = ?', 'created DESC', [sessionId]);
         return rows.map(OCSkillCallbackModel.mapRowToCallback);
     }
@@ -226,7 +226,7 @@ export class OCSkillCallbackModel {
     /**
      * Find callbacks by session ID and skill ID
      */
-    static async findBySessionAndSkill(sessionId: number, skillId: string): Promise<OCSkillCallbackModelType[]> {
+    static async findBySessionAndSkill(sessionId: string, skillId: string): Promise<OCSkillCallbackModelType[]> {
         const rows = await db.selectAllFrom('oc_skill_callbacks', 'session_id = ? AND skill_id = ?', 'created DESC', [sessionId, skillId]);
         return rows.map(OCSkillCallbackModel.mapRowToCallback);
     }
@@ -242,14 +242,14 @@ export class OCSkillCallbackModel {
     /**
      * Delete callbacks by session ID
      */
-    static async deleteBySessionId(sessionId: number): Promise<number> {
+    static async deleteBySessionId(sessionId: string): Promise<number> {
         return await db.delete('oc_skill_callbacks', 'session_id = ?', [sessionId]);
     }
 
     /**
      * Get callback count for a session
      */
-    static async getCountBySessionId(sessionId: number): Promise<number> {
+    static async getCountBySessionId(sessionId: string): Promise<number> {
         return await db.count('oc_skill_callbacks', 'session_id = ?', [sessionId]);
     }
 
@@ -257,13 +257,22 @@ export class OCSkillCallbackModel {
      * Map database row to OCSkillCallbackModelType
      */
     private static mapRowToCallback(row: any): OCSkillCallbackModelType {
+        let data = row.data;
+        try {
+            if (typeof data === 'string') {
+                data = JSON.parse(data);
+            }
+        } catch (e) {
+            // keep as string if parse fails
+        }
+
         return {
             id: row.id,
             skill_id: row.skill_id,
-            skill_version: row.skill_version,
             session_id: row.session_id,
+            event: row.event,
             type: row.type,
-            data: row.data,
+            data: data,
             created: new Date(row.created)
         };
     }

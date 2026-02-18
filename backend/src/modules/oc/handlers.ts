@@ -2,7 +2,8 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import {
     CreateOCSessionRequest, CreateOCSessionResponse,
     UpdateOCSessionRequest, UpdateOCSessionResponse,
-    SendSessionMessageRequest, SendSessionMessageResponse
+    SendSessionMessageRequest, SendSessionMessageResponse,
+    SkillsCallbackRequest
 } from '../../types/oc';
 import { Response, RESPONSE_CODES } from '../../types/common';
 import { sendSuccess, sendError } from '../../utils/response';
@@ -11,7 +12,7 @@ import { randomUUID } from 'crypto';
 import { OCSessionModel, OCSkillCallbackModel } from './model';
 import fsPromises from 'fs/promises';
 import path from 'path';
-import { getAgentById, getAgentParts } from '../../agents';
+import { getSkillById, getSkillParts } from '../../skills';
 
 const OPENCODE_URL = config.OPENCODE_URL;
 const MESSAGE_DATA_DIR = path.join(process.cwd(), 'data', 'session_messages');
@@ -62,7 +63,7 @@ export const createOCSession = async (request: FastifyRequest<{ Body: CreateOCSe
             directory: extra?.directory || null,
             title: title || openCodeSession.title || null,
             type: type || 0,
-            agent_id: openCodeSession.agentID || 0,
+            skill_id: openCodeSession.agentID || 0,
             disabled: 0
         });
 
@@ -70,7 +71,7 @@ export const createOCSession = async (request: FastifyRequest<{ Body: CreateOCSe
             session_id: session.id,
             type: session.type,
             title: session.title || '',
-            agent_id: session.agent_id
+            skill_id: session.skill_id
         });
     } catch (error: any) {
         return sendError(reply, RESPONSE_CODES.INTERNAL_ERROR, error?.message || 'Failed to create session');
@@ -100,16 +101,16 @@ export const updateOCSession = async (request: FastifyRequest<{ Body: UpdateOCSe
 
 
         let items: any[] = [];
-        // Get app_test agent and send command
-        const agent = getAgentById(1);
-        if (agent) {
-            const agentParts = getAgentParts(agent);
+        // Get app_test skill and send command
+        const skill = getSkillById(1);
+        if (skill) {
+            const skillParts = getSkillParts(skill);
             const commandBody = {
-                command: agent.skill_name,
-                arguments: `'session_id:${session.session_id}'。${agent.arguments || ''}`,
-                agent: agent.type,
-                model: agent.provider && agent.model ? `${agent.provider}/${agent.model}` : "opencode/kimi-k2.5-free",
-                parts: agentParts
+                command: skill.name,
+                arguments: `'session_id:${session.session_id}'。${skill.extra_arguments || ''}`,
+                skill: skill.type,
+                model: skill.provider && skill.model ? `${skill.provider}/${skill.model}` : "opencode/kimi-k2.5-free",
+                parts: skillParts
             };
 
             const commandResponse = await forwardToOpenCode(
@@ -132,7 +133,7 @@ export const updateOCSession = async (request: FastifyRequest<{ Body: UpdateOCSe
 
         return sendSuccess(reply, {
             session_id: session_id,
-            agent_id: agent.id,
+            skill_id: skill.id,
             items: items.length > 0 ? items : undefined
         });
     } catch (error: any) {
@@ -216,7 +217,7 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
                 user_message: userMessage,
                 opencode_response: {
                     parts: openCodeMessage.parts || [],
-                    agent_id: openCodeMessage.agentID || 0
+                    skill_id: openCodeMessage.agentID || 0
                 },
                 timestamp: new Date().toISOString()
             });
@@ -228,7 +229,7 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
 
         return sendSuccess(reply, {
             session_id: session.id,
-            agent_id: session.agent_id,
+            skill_id: session.skill_id,
             items: items
         });
     } catch (error: any) {
@@ -237,12 +238,12 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
 };
 
 // Skills Callback handler
-export const skillsCallback = async (request: FastifyRequest<{ Body: any }>, reply: FastifyReply) => {
-    const { session_id, agent_id, skill_id, event, type, data } = request.body as any;
+export const skillsCallback = async (request: FastifyRequest<{ Body: SkillsCallbackRequest }>, reply: FastifyReply) => {
+    const { session_id, skill_id, event, type, data } = request.body;
 
     try {
         // Validate required fields
-        if (!session_id || !agent_id || !event) {
+        if (!session_id || !event) {
             return sendError(reply, RESPONSE_CODES.INVALID_REQUEST, 'Missing required fields');
         }
 
@@ -251,13 +252,21 @@ export const skillsCallback = async (request: FastifyRequest<{ Body: any }>, rep
         if (!session) {
             return sendError(reply, RESPONSE_CODES.NOT_FOUND, 'Session not found');
         }
-        const agent = getAgentById(1);
+
+        // Save callback to database
+        await OCSkillCallbackModel.create({
+            skill_id: skill_id ? skill_id.toString() : 'unknown',
+            session_id: session_id,
+            event: event,
+            type: type || 'unknown',
+            data: data
+        });
 
         // Notify client via SSE using the local session_id
-        const sent = sendSSEMessage(session.id, event, { 
+        const sent = sendSSEMessage(session.id, event, {
             session_id: session.id,
-            agent_id,
-            agent_name: agent?.name,
+            skill_id: skill_id || session.skill_id,
+            skill_name: (skill_id && getSkillById(Number(skill_id))?.name) || (session.skill_id && getSkillById(session.skill_id)?.name) || 'unknown',
             type,
             data
         });
@@ -295,13 +304,13 @@ export function sendSSEMessage(session_id: number, event: string, data: any) {
 }
 
 // SSE handler
-export const sseStream = async (request: FastifyRequest<{ Querystring: { session_id: number; agent_id?: number; agent_name?: string } }>, reply: FastifyReply) => {
+export const sseStream = async (request: FastifyRequest<{ Querystring: { session_id: number; skill_id?: number; skill_name?: string } }>, reply: FastifyReply) => {
     if (!request.user) {
         return sendError(reply, RESPONSE_CODES.UNAUTHORIZED, 'Authentication required');
     }
 
     const userId = (request.user as any).id;
-    const { session_id, agent_id, agent_name } = request.query;
+    const { session_id, skill_id, skill_name } = request.query;
 
     try {
         // Find the session in database to verify ownership
@@ -325,13 +334,14 @@ export const sseStream = async (request: FastifyRequest<{ Querystring: { session
         });
 
         // Send initial connection event
-        reply.raw.write(`event: connected\ndata: ${JSON.stringify({ session_id, agent_id: session.agent_id })}\n\n`);
+        reply.raw.write(`event: connected\ndata: ${JSON.stringify({ session_id, skill_id: session.skill_id })}\n\n`);
 
         // Store SSE connection info
+        const effectiveSkillId = skill_id ? Number(skill_id) : session.skill_id;
         const sseConnection = {
             session_id,
-            agent_id: agent_id || session.agent_id,
-            agent_name,
+            skill_id: effectiveSkillId,
+            skill_name: skill_name || getSkillById(effectiveSkillId)?.name,
             user_id: userId,
             connected_at: new Date().toISOString()
         };
@@ -356,7 +366,7 @@ export const sseStream = async (request: FastifyRequest<{ Querystring: { session
         request.raw.on('close', () => {
             clearInterval(heartbeatInterval);
             sseConnections.delete(session_id);
-            console.log('[SSE] Client disconnected:', { session_id, agent_id });
+            console.log('[SSE] Client disconnected:', { session_id, skill_id });
         });
 
         // Keep the connection open (don't call reply.send())

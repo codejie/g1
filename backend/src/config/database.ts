@@ -21,8 +21,8 @@ class DatabaseWrapper {
     async init(): Promise<void> {
         return new Promise((resolve, reject) => {
             this.db.serialize(() => {
-                // Enable foreign key constraints
-                this.db.run('PRAGMA foreign_keys = ON');
+                // Foreign key constraints disabled
+                // this.db.run('PRAGMA foreign_keys = ON');
 
                 // Create studios table
                 this.db.run(`
@@ -69,9 +69,7 @@ class DatabaseWrapper {
                         is_default BOOLEAN NOT NULL DEFAULT 0,
                         is_owner BOOLEAN NOT NULL DEFAULT 0,
                         created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                        FOREIGN KEY (studio_id) REFERENCES studios(id) ON DELETE CASCADE
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                 `, (err) => {
                     if (err) {
@@ -89,8 +87,7 @@ class DatabaseWrapper {
                         expires DATETIME NOT NULL,
                         disabled INTEGER NOT NULL DEFAULT 0,
                         created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                 `, (err) => {
                     if (err) {
@@ -106,12 +103,13 @@ class DatabaseWrapper {
                         user_id INTEGER NOT NULL,
                         session_id VARCHAR(128) UNIQUE NOT NULL,
                         parent_id VARCHAR(128),
-                        directory VARCHAR(255) NOT NULL,
+                        directory VARCHAR(255),
                         title VARCHAR(255),
+                        type INTEGER NOT NULL DEFAULT 0,
+                        skill_id INTEGER NOT NULL DEFAULT 0,
                         disabled INTEGER NOT NULL DEFAULT 0,
                         created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                 `, (err) => {
                     if (err) {
@@ -127,9 +125,7 @@ class DatabaseWrapper {
                         user_id INTEGER NOT NULL,
                         session_id VARCHAR(128) NOT NULL,
                         message TEXT NOT NULL,
-                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                        FOREIGN KEY (session_id) REFERENCES oc_sessions(session_id) ON DELETE CASCADE
+                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                 `, (err) => {
                     if (err) {
@@ -143,8 +139,8 @@ class DatabaseWrapper {
                     CREATE TABLE IF NOT EXISTS oc_skill_callbacks (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         skill_id VARCHAR(128) NOT NULL,
-                        skill_version VARCHAR(64) NOT NULL,
-                        session_id INTEGER NOT NULL,
+                        session_id VARCHAR(128) NOT NULL,
+                        event VARCHAR(64) NOT NULL,
                         type VARCHAR(64) NOT NULL,
                         data TEXT NOT NULL,
                         created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -168,8 +164,7 @@ class DatabaseWrapper {
                         status VARCHAR(50) NOT NULL DEFAULT 'processing',
                         disabled INTEGER NOT NULL DEFAULT 0,
                         created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                 `, (err) => {
                     if (err) {
@@ -190,9 +185,7 @@ class DatabaseWrapper {
                         type VARCHAR(50) NOT NULL,
                         disabled INTEGER NOT NULL DEFAULT 0,
                         created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                        FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                 `, (err) => {
                     if (err) {
@@ -210,7 +203,7 @@ class DatabaseWrapper {
     // Promisify database methods
     private run(sql: string, params: any[] = []): Promise<sqlite3.RunResult> {
         return new Promise((resolve, reject) => {
-            this.db.run(sql, params, function(err) {
+            this.db.run(sql, params, function (err) {
                 if (err) {
                     reject(err);
                 } else {
@@ -222,7 +215,7 @@ class DatabaseWrapper {
 
     private get(sql: string, params: any[] = []): Promise<any> {
         return new Promise((resolve, reject) => {
-            this.db.get(sql, params, function(err, row) {
+            this.db.get(sql, params, function (err, row) {
                 if (err) {
                     reject(err);
                 } else {
@@ -234,7 +227,7 @@ class DatabaseWrapper {
 
     private all(sql: string, params: any[] = []): Promise<any[]> {
         return new Promise((resolve, reject) => {
-            this.db.all(sql, params, function(err, rows) {
+            this.db.all(sql, params, function (err, rows) {
                 if (err) {
                     reject(err);
                 } else {
@@ -249,7 +242,7 @@ class DatabaseWrapper {
         const columns = Object.keys(data).join(', ');
         const placeholders = Object.keys(data).map(() => '?').join(', ');
         const values = Object.values(data);
-        
+
         const sql = `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`;
         const result = await this.run(sql, values);
         return (result as sqlite3.RunResult).lastID || 0;
@@ -302,9 +295,9 @@ class DatabaseWrapper {
 
     // Pagination support
     async selectWithPagination(
-        table: string, 
-        where: string = '1=1', 
-        params: any[] = [], 
+        table: string,
+        where: string = '1=1',
+        params: any[] = [],
         orderBy: string = '',
         page: number = 1,
         size: number = 10
@@ -319,9 +312,9 @@ class DatabaseWrapper {
             sql += ` ORDER BY ${orderBy}`;
         }
         sql += ` LIMIT ? OFFSET ?`;
-        
+
         const items = await this.all(sql, [...params, size, offset]);
-        
+
         return { items, total };
     }
 
