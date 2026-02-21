@@ -129,6 +129,12 @@
                   <span class="text-xs font-semibold text-purple-600">Data:</span>
                   <pre class="text-xs mt-1 p-2 bg-gray-50 rounded overflow-x-auto">{{ formatData(msg.data) }}</pre>
                 </div>
+                <!-- Render result_with_file component -->
+                <ResultWithFile
+                  v-if="msg.event === 'result_with_file'"
+                  :name="msg.data?.name || 'Unknown'"
+                  :path="msg.data?.path || ''"
+                />
                 <div class="text-xs text-gray-400 mt-2">{{ msg.timestamp }}</div>
               </div>
             </div>
@@ -145,6 +151,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import ocService from '@/services/oc'
 import { useAuthStore } from '@/stores/auth'
+import ResultWithFile from '@/views/workspace/components/ResultWithFile.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -215,6 +222,7 @@ onMounted(async () => {
       let currentEvent = ''
       const processStream = async () => {
         try {
+          // eslint-disable-next-line no-constant-condition
           while (true) {
             const { done, value } = await reader.read()
             if (done) break

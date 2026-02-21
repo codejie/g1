@@ -31,27 +31,6 @@ async function getOCClient() {
 // Map to store session_id to SSE connection relationship
 const sseConnections = new Map<number, FastifyReply>();
 
-// Forward request to OpenCode API
-async function forwardToOpenCode(url: URL, method: string, body: any): Promise<any> {
-    const reply = await fetch(url.toString(), {
-        method,
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-    })
-    if (!reply.ok) {
-        let errorData: any;
-        try {
-            errorData = await reply.json();
-        } catch {
-            errorData = { message: reply.statusText };
-        }
-        throw new Error(`OpenCode API error: ${errorData.message || reply.statusText}`);
-    }
-    return reply.json()
-}
-
 // Create OC Session handler
 export const createOCSession = async (request: FastifyRequest<{ Body: CreateOCSessionRequest }>, reply: FastifyReply) => {
     if (!request.user) {
@@ -119,20 +98,6 @@ export const updateOCSession = async (request: FastifyRequest<{ Body: UpdateOCSe
         const skill = getSkillById(10);
         if (skill) {
             const skillParts = getSkillParts(skill);
-            // const commandBody = {
-            //     command: skill.name,
-            //     arguments: `skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}。${skill.extra_arguments || ''}`,
-            //     agent: skill.type,
-            //     model: skill.provider && skill.model ? `${skill.provider}/${skill.model}` : "opencode/kimi-k2.5-free",
-            //     parts: skillParts
-            // };
-
-            // const commandResponse = await forwardToOpenCode(
-            //     new URL(`/session/${session.session_id}/command`, OPENCODE_URL),
-            //     'POST',
-            //     commandBody
-            // );
-
             const client = await getOCClient();
             const openCodeMessage = await client.session.prompt({
                 path: { id: session.session_id },
@@ -203,31 +168,13 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
             created: new Date().toISOString()
         };
 
-        // Forward message to OpenCode
-        // const openCodeMessage: any = await forwardToOpenCode(
-        //     new URL(`/session/${session.session_id}/message`, OPENCODE_URL),
-        //     'POST',
-        //     {
-        //         model: {
-        //             providerID: extra?.provider_id || 'opencode',
-        //             modelID: extra?.model_id || 'kimi-k2.5-free',
-        //         },
-        //         parts: [
-        //             {
-        //                 type: type || 'text',
-        //                 text: content
-        //             }
-        //         ]
-        //     }
-        // );
-
         const client = await getOCClient();
         const openCodeMessage = await client.session.prompt({
             path: { id: session.session_id },
             body: {
                 model: {
-                    providerID: 'opencode',
-                    modelID: 'glm-5-free',
+                    providerID: extra?.provider_id || 'opencode',
+                    modelID: extra?.model_id || 'glm-5-free',
                 },
                 parts: [
                     {

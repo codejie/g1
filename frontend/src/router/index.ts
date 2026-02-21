@@ -13,6 +13,7 @@ import WorkspacePage from '@/views/workspace/pages/WorkspacePage.vue'
 import DeploymentsPage from '@/views/workspace/pages/DeploymentsPage.vue'
 import MonetizationPage from '@/views/workspace/pages/MonetizationPage.vue'
 import Slide1Page from '@/views/workspace/pages/workspace/slide1.vue'
+import Slide2Page from '@/views/workspace/pages/workspace/slide2.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -33,6 +34,12 @@ const router = createRouter({
           path: 'workspace/slide1',
           name: 'workspace-slide1',
           component: Slide1Page,
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'workspace/slide2',
+          name: 'workspace-slide2',
+          component: Slide2Page,
           meta: { requiresAuth: true },
         },
         {
