@@ -21,6 +21,11 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => {
+    // If response is blob, return data directly
+    if (response.config.responseType === 'blob' || response.config.responseType === 'arraybuffer') {
+      return response.data
+    }
+
     // Assume all successful responses from backend have a 'code' field
     const res = response.data as Response
     if (res.code === 0) {

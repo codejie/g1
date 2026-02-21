@@ -17,15 +17,24 @@ export interface Skill {
  * Skill 列表
  */
 export const skills: Skill[] = [
+    // {
+    //     id: 1,
+    //     type: 'build',
+    //     name: 'session-tester', // Renamed from '测试Agent' to match typical skill identifier if used as command, or keeping as placeholder
+    //     description: '测试Skill',
+    //     version: '1',
+    //     extra_arguments: '从上下文中获取"session id"信息，包括"command"消息的session_id或"message"消息的SessionID等， "session_id"将被后续操作使用。',
+    //     provider: 'opencode',
+    //     model: 'kimi-k2.5-free',
+    // }
     {
-        id: 1,
+        id: 10,
         type: 'build',
-        name: 'session-tester', // Renamed from '测试Agent' to match typical skill identifier if used as command, or keeping as placeholder
-        description: '测试Skill',
+        name: 'test_file_maker', // Renamed from '测试Agent' to match typical skill identifier if used as command, or keeping as placeholder
+        description: '测试文件生成的Skill',
         version: '1',
-        extra_arguments: '从上下文中获取"session id"信息，包括"command"消息的session_id或"message"消息的SessionID等， "session_id"将被后续操作使用。',
         provider: 'opencode',
-        model: 'kimi-k2.5-free',
+        model: 'kimi-k2.5-free'
     }
 ];
 

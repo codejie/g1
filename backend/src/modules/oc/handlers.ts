@@ -102,13 +102,13 @@ export const updateOCSession = async (request: FastifyRequest<{ Body: UpdateOCSe
 
         let items: any[] = [];
         // Get app_test skill and send command
-        const skill = getSkillById(1);
+        const skill = getSkillById(10);
         if (skill) {
             const skillParts = getSkillParts(skill);
             const commandBody = {
                 command: skill.name,
-                arguments: `'session_id:${session.session_id}'。${skill.extra_arguments || ''}`,
-                skill: skill.type,
+                arguments: `skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}。${skill.extra_arguments || ''}`,
+                agent: skill.type,
                 model: skill.provider && skill.model ? `${skill.provider}/${skill.model}` : "opencode/kimi-k2.5-free",
                 parts: skillParts
             };
@@ -255,7 +255,7 @@ export const skillsCallback = async (request: FastifyRequest<{ Body: SkillsCallb
 
         // Save callback to database
         await OCSkillCallbackModel.create({
-            skill_id: skill_id ? skill_id.toString() : 'unknown',
+            skill_id: skill_id ? Number(skill_id) : 0,
             session_id: session_id,
             event: event,
             type: type || 'unknown',
@@ -310,7 +310,8 @@ export const sseStream = async (request: FastifyRequest<{ Querystring: { session
     }
 
     const userId = (request.user as any).id;
-    const { session_id, skill_id, skill_name } = request.query;
+    const { session_id } = request.query;
+    // skill_id and skill_name removed from query params, use session defaults or unknown
 
     try {
         // Find the session in database to verify ownership
@@ -337,11 +338,11 @@ export const sseStream = async (request: FastifyRequest<{ Querystring: { session
         reply.raw.write(`event: connected\ndata: ${JSON.stringify({ session_id, skill_id: session.skill_id })}\n\n`);
 
         // Store SSE connection info
-        const effectiveSkillId = skill_id ? Number(skill_id) : session.skill_id;
+        const effectiveSkillId = session.skill_id;
         const sseConnection = {
             session_id,
             skill_id: effectiveSkillId,
-            skill_name: skill_name || getSkillById(effectiveSkillId)?.name,
+            skill_name: getSkillById(effectiveSkillId)?.name,
             user_id: userId,
             connected_at: new Date().toISOString()
         };
@@ -366,7 +367,7 @@ export const sseStream = async (request: FastifyRequest<{ Querystring: { session
         request.raw.on('close', () => {
             clearInterval(heartbeatInterval);
             sseConnections.delete(session_id);
-            console.log('[SSE] Client disconnected:', { session_id, skill_id });
+            console.log('[SSE] Client disconnected:', { session_id });
         });
 
         // Keep the connection open (don't call reply.send())

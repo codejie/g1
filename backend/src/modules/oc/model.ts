@@ -218,7 +218,7 @@ export class OCSkillCallbackModel {
     /**
      * Find callbacks by skill ID
      */
-    static async findBySkillId(skillId: string): Promise<OCSkillCallbackModelType[]> {
+    static async findBySkillId(skillId: number): Promise<OCSkillCallbackModelType[]> {
         const rows = await db.selectAllFrom('oc_skill_callbacks', 'skill_id = ?', 'created DESC', [skillId]);
         return rows.map(OCSkillCallbackModel.mapRowToCallback);
     }
@@ -226,7 +226,7 @@ export class OCSkillCallbackModel {
     /**
      * Find callbacks by session ID and skill ID
      */
-    static async findBySessionAndSkill(sessionId: string, skillId: string): Promise<OCSkillCallbackModelType[]> {
+    static async findBySessionAndSkill(sessionId: string, skillId: number): Promise<OCSkillCallbackModelType[]> {
         const rows = await db.selectAllFrom('oc_skill_callbacks', 'session_id = ? AND skill_id = ?', 'created DESC', [sessionId, skillId]);
         return rows.map(OCSkillCallbackModel.mapRowToCallback);
     }
@@ -268,7 +268,7 @@ export class OCSkillCallbackModel {
 
         return {
             id: row.id,
-            skill_id: row.skill_id,
+            skill_id: Number(row.skill_id),
             session_id: row.session_id,
             event: row.event,
             type: row.type,

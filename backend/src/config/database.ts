@@ -138,7 +138,7 @@ class DatabaseWrapper {
                 this.db.run(`
                     CREATE TABLE IF NOT EXISTS oc_skill_callbacks (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        skill_id VARCHAR(128) NOT NULL,
+                        skill_id INTEGER NOT NULL,
                         session_id VARCHAR(128) NOT NULL,
                         event VARCHAR(64) NOT NULL,
                         type VARCHAR(64) NOT NULL,

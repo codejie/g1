@@ -1,7 +1,7 @@
 export type PageInfo = {
   page: number
   size: number
-  total: number
+  total?: number
 }
 
 export type SortInfo = {
