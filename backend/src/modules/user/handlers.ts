@@ -15,6 +15,7 @@ import {
 } from '../../types/user';
 import { RESPONSE_CODES } from '../../types/common';
 import { UserModel, UserStudioModel, UserTokenModel } from './model';
+import { StudioModel } from '../studio/model';
 import { sendSuccess, sendError } from '../../utils/response';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -315,28 +316,10 @@ export const getUserStudios = async (request: FastifyRequest<{ Body: UserStudios
     const page_info = request.body.page_info || {};
     const { page = 1, size = 10 } = page_info;
 
-    const db = await import('../../config/database').then(m => m.default);
-    const { items, total } = await db.selectWithPagination(
-        'user_studios us JOIN studios s ON us.studio_id = s.id',
-        'us.user_id = ?',
-        [request.user.id],
-        'us.updated DESC',
-        page,
-        size
-    );
+    const { items, total } = await UserStudioModel.findAllByUserId(request.user.id, { page, size });
 
     return sendSuccess(reply, {
-        items: items.map(item => ({
-            id: item.id,
-            user_id: item.user_id,
-            studio_id: item.studio_id,
-            role: item.role,
-            is_default: Boolean(item.is_default),
-            is_owner: Boolean(item.is_owner),
-            created: new Date(item.created),
-            updated: new Date(item.updated),
-            studio_name: item.name
-        })),
+        items,
         page_info: { page, size, total }
     });
 };
@@ -392,50 +375,29 @@ export const createStudio = async (request: FastifyRequest<{ Body: CreateStudioR
     const { name, description } = request.body;
 
     // Check if studio name already exists
-    const existingStudio = await import('../../config/database').then(m => m.default);
-    const studioRow = await existingStudio.selectOne('studios', 'name = ?', [name]);
-    if (studioRow) {
+    const existingStudio = await StudioModel.findByName(name);
+    if (existingStudio) {
         return sendError(reply, RESPONSE_CODES.STUDIO_ALREADY_EXISTS, 'Studio with this name already exists');
     }
 
     // Create studio
-    const studioId = await existingStudio.insert('studios', {
+    const studio = await StudioModel.create({
         name,
         description,
-        disabled: 0,
-        created: new Date(),
-        updated: new Date()
+        disabled: 0
     });
 
     // Add user as owner
-    const userStudioId = await existingStudio.insert('user_studios', {
+    const userStudio = await UserStudioModel.create({
         user_id: request.user.id,
-        studio_id: studioId,
+        studio_id: studio.id,
         role: 'owner',
         is_default: true,
-        is_owner: true,
-        created: new Date(),
-        updated: new Date()
+        is_owner: true
     });
 
     return sendSuccess(reply, {
-        studio: { 
-            id: studioId,
-            name,
-            description,
-            disabled: 0,
-            created: new Date(),
-            updated: new Date()
-        },
-        userStudio: {
-            id: userStudioId,
-            user_id: request.user.id,
-            studio_id: studioId,
-            role: 'owner',
-            is_default: true,
-            is_owner: true,
-            created: new Date(),
-            updated: new Date()
-        }
+        studio,
+        userStudio
     });
 };

@@ -167,6 +167,35 @@ export default async function (fastify: FastifyInstance) {
         }
     }, ocHandlers.skillsCallback);
 
+    // Skills Callback Alias
+    fastify.post('/oc/callback', {
+        schema: {
+            description: 'Receive callback data from OpenCode Skills module (alias)',
+            tags: ['OpenCode'],
+            body: {
+                type: 'object',
+                required: ['session_id', 'skill_id', 'event'],
+                properties: {
+                    session_id: { type: 'string', description: 'Session ID' },
+                    skill_id: { type: 'number', description: 'Skill ID' },
+                    event: { type: 'string', description: 'Event type' },
+                    type: { type: 'string', description: 'Data type' },
+                    data: { type: 'object', description: 'Callback data' }
+                }
+            },
+            response: {
+                200: {
+                    type: 'object',
+                    properties: {
+                        code: { type: 'number' },
+                        message: { type: 'string' },
+                        result: { type: 'object' }
+                    }
+                }
+            }
+        }
+    }, ocHandlers.skillsCallback);
+
     // SSE Stream
     fastify.get('/oc/session/sse', {
         preHandler: [authenticate],

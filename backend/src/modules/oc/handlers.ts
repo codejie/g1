@@ -5,7 +5,7 @@ import {
     SendSessionMessageRequest, SendSessionMessageResponse,
     SkillsCallbackRequest
 } from '../../types/oc';
-import { Response, RESPONSE_CODES } from '../../types/common';
+import { RESPONSE_CODES } from '../../types/common';
 import { sendSuccess, sendError } from '../../utils/response';
 import config from '../../config';
 import { randomUUID } from 'crypto';
@@ -16,7 +16,17 @@ import { getSkillById, getSkillParts } from '../../skills';
 
 const OPENCODE_URL = config.OPENCODE_URL;
 const MESSAGE_DATA_DIR = path.join(process.cwd(), 'data', 'session_messages');
-const SKILL_CALLBACK_DATA_DIR = path.join(process.cwd(), 'data', 'skill_callbacks');
+
+let ocClient: any;
+async function getOCClient() {
+    if (!ocClient) {
+        const sdk = await import('@opencode-ai/sdk');
+        ocClient = sdk.createOpencodeClient({
+            baseUrl: OPENCODE_URL
+        });
+    }
+    return ocClient;
+}
 
 // Map to store session_id to SSE connection relationship
 const sseConnections = new Map<number, FastifyReply>();
@@ -31,7 +41,13 @@ async function forwardToOpenCode(url: URL, method: string, body: any): Promise<a
         body: JSON.stringify(body),
     })
     if (!reply.ok) {
-        throw new Error(`OpenCode API error: ${reply.statusText}`);
+        let errorData: any;
+        try {
+            errorData = await reply.json();
+        } catch {
+            errorData = { message: reply.statusText };
+        }
+        throw new Error(`OpenCode API error: ${errorData.message || reply.statusText}`);
     }
     return reply.json()
 }
@@ -46,24 +62,22 @@ export const createOCSession = async (request: FastifyRequest<{ Body: CreateOCSe
     const { type, title, extra } = request.body;
 
     try {
-        // Generate a unique session ID for database
-        const dbSessionId = randomUUID();
-
-        // Forward to OpenCode to create session
-        const openCodeSession: any = await forwardToOpenCode(new URL(`/session`, OPENCODE_URL), 'POST', {
-            title: title || 'New Session',
-            parentId: extra?.parent_id || null
+        const client = await getOCClient();
+        const openCodeSession = await client.session.create({
+            body: {
+                title: title || 'New Session'
+            }
         });
 
         // Save session to database
         const session = await OCSessionModel.create({
             user_id: userId,
-            session_id: openCodeSession.id,
+            session_id: openCodeSession.data.id,
             parent_id: extra?.parent_id || null,
             directory: extra?.directory || null,
-            title: title || openCodeSession.title || null,
+            title: title || openCodeSession.data.title || null,
             type: type || 0,
-            skill_id: openCodeSession.agentID || 0,
+            skill_id: 0,
             disabled: 0
         });
 
@@ -105,23 +119,41 @@ export const updateOCSession = async (request: FastifyRequest<{ Body: UpdateOCSe
         const skill = getSkillById(10);
         if (skill) {
             const skillParts = getSkillParts(skill);
-            const commandBody = {
-                command: skill.name,
-                arguments: `skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}。${skill.extra_arguments || ''}`,
-                agent: skill.type,
-                model: skill.provider && skill.model ? `${skill.provider}/${skill.model}` : "opencode/kimi-k2.5-free",
-                parts: skillParts
-            };
+            // const commandBody = {
+            //     command: skill.name,
+            //     arguments: `skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}。${skill.extra_arguments || ''}`,
+            //     agent: skill.type,
+            //     model: skill.provider && skill.model ? `${skill.provider}/${skill.model}` : "opencode/kimi-k2.5-free",
+            //     parts: skillParts
+            // };
 
-            const commandResponse = await forwardToOpenCode(
-                new URL(`/session/${session.session_id}/command`, OPENCODE_URL),
-                'POST',
-                commandBody
-            );
+            // const commandResponse = await forwardToOpenCode(
+            //     new URL(`/session/${session.session_id}/command`, OPENCODE_URL),
+            //     'POST',
+            //     commandBody
+            // );
+
+            const client = await getOCClient();
+            const openCodeMessage = await client.session.prompt({
+                path: { id: session.session_id },
+                body: {
+                    model: {
+                        providerID: 'opencode',
+                        modelID: 'glm-5-free',
+                    },
+                    parts: [
+                        {
+                            type: 'text',
+                            text: `执行${skill.name}，skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}。${skill.extra_arguments || ''}`,
+                        }
+                    ]
+                }
+            })
+
 
             // Map response items similarly to sendSessionMessage
-            if (commandResponse && commandResponse.parts) {
-                items = commandResponse.parts.map((item: any) => ({
+            if (openCodeMessage && openCodeMessage.data.parts) {
+                items = openCodeMessage.data.parts.map((item: any) => ({
                     id: item.id || randomUUID(),
                     role: item.role || 'assistant',
                     type: item.type || 'text',
@@ -172,27 +204,43 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
         };
 
         // Forward message to OpenCode
-        const openCodeMessage: any = await forwardToOpenCode(
-            new URL(`/session/${session.session_id}/message`, OPENCODE_URL),
-            'POST',
-            {
+        // const openCodeMessage: any = await forwardToOpenCode(
+        //     new URL(`/session/${session.session_id}/message`, OPENCODE_URL),
+        //     'POST',
+        //     {
+        //         model: {
+        //             providerID: extra?.provider_id || 'opencode',
+        //             modelID: extra?.model_id || 'kimi-k2.5-free',
+        //         },
+        //         parts: [
+        //             {
+        //                 type: type || 'text',
+        //                 text: content
+        //             }
+        //         ]
+        //     }
+        // );
+
+        const client = await getOCClient();
+        const openCodeMessage = await client.session.prompt({
+            path: { id: session.session_id },
+            body: {
                 model: {
                     providerID: 'opencode',
-                    modelID: extra?.model_id || 'kimi-k2.5-free',
+                    modelID: 'glm-5-free',
                 },
                 parts: [
                     {
-                        type: type || 'text',
+                        type: 'text',
                         text: content
                     }
                 ]
             }
-        );
-
+        })
         console.log('[OpenCode Response]', JSON.stringify(openCodeMessage, null, 2));
 
         // Map response items
-        const items = openCodeMessage.parts?.map((item: any) => ({
+        const items = openCodeMessage.data.parts?.map((item: any) => ({
             id: item.id,
             role: item.role,
             type: item.type,
@@ -216,8 +264,8 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
             existingMessages.push({
                 user_message: userMessage,
                 opencode_response: {
-                    parts: openCodeMessage.parts || [],
-                    skill_id: openCodeMessage.agentID || 0
+                    parts: openCodeMessage.data.parts || [],
+                    skill_id: 0
                 },
                 timestamp: new Date().toISOString()
             });

@@ -257,7 +257,6 @@ onMounted(async () => {
     }
 
     // 3. Update Session with app_type (Commented out as requested)
-    /*
     const appTypeValue = parseInt(appType.value)
     const updateResponse = await ocService.updateSession({
       session_id: session.session_id,
@@ -275,7 +274,6 @@ onMounted(async () => {
         text: aiResponseText,
       })
     }
-    */
     
     console.log('OC Session initialized:', session.session_id)
   } catch (error) {

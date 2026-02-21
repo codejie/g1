@@ -3,3 +3,5 @@ dist
 .DS_Store
 backend/data
 *.bkp
+skills/
+package-lock.json

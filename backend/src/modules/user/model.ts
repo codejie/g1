@@ -142,6 +142,28 @@ export class UserStudioModel {
         return row ? UserStudioModel.mapRowToUserStudio(row) : undefined;
     }
 
+    static async findAllByUserId(userId: number, options?: {
+        page?: number;
+        size?: number;
+    }): Promise<{ items: any[]; total: number }> {
+        const { items, total } = await db.selectWithPagination(
+            'user_studios us JOIN studios s ON us.studio_id = s.id',
+            'us.user_id = ?',
+            [userId],
+            'us.updated DESC',
+            options?.page || 1,
+            options?.size || 10
+        );
+
+        return {
+            items: items.map(item => ({
+                ...UserStudioModel.mapRowToUserStudio(item),
+                studio_name: item.name
+            })),
+            total
+        };
+    }
+
     static async update(id: number, data: Partial<Omit<UserStudio, 'id' | 'created'>>): Promise<boolean> {
         const updateData = {
             ...data,
