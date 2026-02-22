@@ -21,9 +21,44 @@ let ocClient: any;
 async function getOCClient() {
     if (!ocClient) {
         const sdk = await import('@opencode-ai/sdk');
-        ocClient = sdk.createOpencodeClient({
+        ocClient = (sdk as any).createOpencodeClient({
             baseUrl: OPENCODE_URL
         });
+
+        // Subscribe to events from OpenCode
+        (async () => {
+            try {
+                const response = await ocClient.event.subscribe();
+                console.log('[OpenCode] SSE subscription started');
+
+                for await (const event of response.stream) {
+                    console.log('[OpenCode] SSE event:', event);
+                    const eventType = event.type || '';
+                    if (eventType.startsWith('message.') || eventType.startsWith('session.')) {
+                        let openCodeSessionId: string | undefined;
+                        if (eventType === 'message.part.updated') {
+                            openCodeSessionId = event.properties?.part?.sessionID;
+                        } else {
+                            openCodeSessionId = event.properties?.sessionID;
+                        }
+                        // console.log('[OpenCode] SSE sessionID:', openCodeSessionId);
+                        if (openCodeSessionId) {
+                            const session = await OCSessionModel.findBySessionId(openCodeSessionId);
+                            if (session) {
+                                sendSSEMessage(session.id, 'oc_session_message', event);
+                            }
+                        }                        
+                    } else if (eventType.startsWith('server.')) {
+                        console.log('[OpenCode] SSE server event:', event);
+                    } else {
+                        console.log('[OpenCode] SSE unknown event:', event);
+                    }
+                }
+            } catch (error) {
+                console.error('[OpenCode] SSE subscription error:', error);
+                ocClient = null;
+            }
+        })();
     }
     return ocClient;
 }
@@ -99,12 +134,12 @@ export const updateOCSession = async (request: FastifyRequest<{ Body: UpdateOCSe
         if (skill) {
             const skillParts = getSkillParts(skill);
             const client = await getOCClient();
-            const openCodeMessage = await client.session.prompt({
+            const openCodeMessage = await client.session.promptAsync({
                 path: { id: session.session_id },
                 body: {
                     model: {
-                        providerID: 'opencode',
-                        modelID: 'glm-5-free',
+                        providerID: config.LLM_PROVIDER,
+                        modelID: config.LLM_MODEL,
                     },
                     parts: [
                         {
@@ -169,12 +204,12 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
         };
 
         const client = await getOCClient();
-        const openCodeMessage = await client.session.prompt({
+        const openCodeMessage = await client.session.promptAsync({
             path: { id: session.session_id },
             body: {
                 model: {
-                    providerID: extra?.provider_id || 'opencode',
-                    modelID: extra?.model_id || 'glm-5-free',
+                    providerID: extra?.provider_id || config.LLM_PROVIDER,
+                    modelID: extra?.model_id || config.LLM_MODEL,
                 },
                 parts: [
                     {
@@ -288,7 +323,12 @@ export function sendSSEMessage(session_id: number, event: string, data: any) {
     const reply = sseConnections.get(session_id);
     if (reply) {
         try {
-            reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+            const payload = {
+                event,
+                data
+            }
+            reply.raw.write(JSON.stringify(payload) + '\n\n');
+            // reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
             return true;
         } catch (error) {
             console.error(`[SSE] Failed to send message to session ${session_id}:`, error);
@@ -330,7 +370,11 @@ export const sseStream = async (request: FastifyRequest<{ Querystring: { session
         });
 
         // Send initial connection event
-        reply.raw.write(`event: connected\ndata: ${JSON.stringify({ session_id, skill_id: session.skill_id })}\n\n`);
+        // reply.raw.write(`event: connected\ndata: ${JSON.stringify({ session_id, skill_id: session.skill_id })}\n\n`);
+        const payload = {
+            event: 'connected'
+        }
+        reply.raw.write(JSON.stringify(payload) + '\n\n');
 
         // Store SSE connection info
         const effectiveSkillId = session.skill_id;
@@ -351,7 +395,11 @@ export const sseStream = async (request: FastifyRequest<{ Querystring: { session
         // Send periodic heartbeat to keep connection alive
         const heartbeatInterval = setInterval(() => {
             try {
-                reply.raw.write(`:heartbeat\n\n`);
+                const payload = {
+                    event: 'server.heartbeat'
+                }
+                // reply.raw.write(`:heartbeat\n\n`);
+                reply.raw.write(JSON.stringify(payload) + '\n\n');
             } catch {
                 clearInterval(heartbeatInterval);
                 sseConnections.delete(session_id);
