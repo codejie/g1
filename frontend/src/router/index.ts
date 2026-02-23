@@ -22,6 +22,7 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView,
+      redirect: { name: 'workspace' },
       meta: { requiresAuth: true },
       children: [
         {
@@ -53,11 +54,7 @@ const router = createRouter({
           name: 'monetization',
           component: MonetizationPage,
           meta: { requiresAuth: true },
-        },
-        {
-          path: '', // Default child route for '/'
-          redirect: '/workspace',
-        },
+        }
       ],
     },
     {

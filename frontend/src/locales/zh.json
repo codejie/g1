@@ -79,6 +79,9 @@
     "ai_chat_response_suffix": "我将继续生成初始结构。您还有其他需要补充的吗？",
     "new_app_description": "新创建的应用",
     "cancel_chat_button": "取消",
+    "chat_sender_user": "您",
+    "chat_sender_ai": "AI",
+    "no_messages": "暂无消息",
     "new": {
       "title": "你想创建什么应用？",
       "webApp": "Web应用",

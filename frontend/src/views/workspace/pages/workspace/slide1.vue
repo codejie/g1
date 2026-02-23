@@ -94,8 +94,8 @@
                 </div>
                 <ResultWithFile
                   v-if="msg.event === 'result_with_file'"
-                  :name="msg.data?.name || 'Unknown'"
-                  :path="msg.data?.path || ''"
+                  :name="msg.data?.data.name || 'Unknown'"
+                  :path="msg.data?.data.path || ''"
                 />
                 <div class="text-xs text-gray-400 mt-2">{{ msg.timestamp }}</div>
               </div>
@@ -202,6 +202,7 @@ const initSSE = async (id: number) => {
 
     const processStream = async () => {
       try {
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
@@ -215,15 +216,24 @@ const initSSE = async (id: number) => {
               const trimmedLine = line.trim()
               if (!trimmedLine) continue
               const parsed = JSON.parse(trimmedLine)
-              
+              console.log('SSE event:', parsed)
               // Pass event and data to ChatPanel component
-              chatPanelRef.value?.handleSSEEvent(parsed.event, parsed.data)
-
-              sseMessages.value.push({
-                event: parsed.event || 'unknown',
-                data: parsed.data || {},
-                timestamp: formatTime()
-              })
+              if (parsed.event === 'oc_session_message') {
+                chatPanelRef.value?.handleSSEEvent(parsed.event, parsed.data)
+                // if (parsed.data.type === 'message.part.updated' &&  parsed.data.properties.part.type === 'tool') {
+                //   sseMessages.value.push({
+                //     event: parsed.event || 'unknown',
+                //     data: parsed.data || {},
+                //     timestamp: formatTime()
+                //   })                  
+                // }
+              } else {
+                sseMessages.value.push({
+                  event: parsed.event || 'unknown',
+                  data: parsed.data || {},
+                  timestamp: formatTime()
+                })
+              }
             } catch (e) {
               console.warn('Failed to parse SSE data JSON:', e, line)
             }

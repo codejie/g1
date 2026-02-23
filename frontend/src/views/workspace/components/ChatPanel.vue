@@ -120,7 +120,7 @@ const getTypeStyle = (type: MessageType) => {
 }
 
 const handleSSEEvent = (event: string, data: any) => {
-  console.log('ChatPanel [SSE] Event:', event, data)
+  // console.log('ChatPanel [SSE] Event:', event, data)
   
   if (event === 'oc_session_message') {
     const type = data.type
@@ -132,7 +132,7 @@ const handleSSEEvent = (event: string, data: any) => {
       // const content = part.content || ''
       
       if (partType === 'text') {
-        chatMessages.value.push({ sender: 'ai', text: part.text, type: 'text' })
+        // chatMessages.value.push({ sender: 'ai', text: part.text, type: 'text' })
       } else if (partType === 'assistant') {
         chatMessages.value.push({ sender: 'ai', text: part.text, type: 'assistant' })
       } else if (partType === 'reasoning') {
@@ -160,6 +160,8 @@ const handleSSEEvent = (event: string, data: any) => {
       } else if (properties.status.type === 'idle') {
         disabled.value = false
       }
+    } else if (type === 'session.idle') {
+      disabled.value = false
     }
   }
   

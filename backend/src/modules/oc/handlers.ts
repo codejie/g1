@@ -32,7 +32,7 @@ async function getOCClient() {
                 console.log('[OpenCode] SSE subscription started');
 
                 for await (const event of response.stream) {
-                    console.log('[OpenCode] SSE event:', event);
+                    // console.log('[OpenCode] SSE event:', event);
                     const eventType = event.type || '';
                     if (eventType.startsWith('message.') || eventType.startsWith('session.')) {
                         let openCodeSessionId: string | undefined;
@@ -49,7 +49,7 @@ async function getOCClient() {
                             }
                         }                        
                     } else if (eventType.startsWith('server.')) {
-                        console.log('[OpenCode] SSE server event:', event);
+                        // console.log('[OpenCode] SSE server event:', event);
                     } else {
                         console.log('[OpenCode] SSE unknown event:', event);
                     }
@@ -144,7 +144,7 @@ export const updateOCSession = async (request: FastifyRequest<{ Body: UpdateOCSe
                     parts: [
                         {
                             type: 'text',
-                            text: `执行${skill.name}，skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}。${skill.extra_arguments || ''}`,
+                            text: `执行${skill.name}，skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}，不要在应答中使用'tool'的'question'等类似内容。${skill.extra_arguments || ''}`,
                         }
                     ]
                 }
