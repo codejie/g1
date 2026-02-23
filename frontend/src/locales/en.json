@@ -55,7 +55,9 @@
     "title": "Menu",
     "workspace": "Workspace",
     "deployments": "Deployments",
-    "monetization": "Monetization"
+    "monetization": "Monetization",
+    "expand": "Expand",
+    "collapse": "Collapse"
   },
   "workspace": {
     "create_app_title": "Create New Application",

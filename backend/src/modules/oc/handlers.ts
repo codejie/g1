@@ -132,19 +132,18 @@ export const updateOCSession = async (request: FastifyRequest<{ Body: UpdateOCSe
         // Get app_test skill and send command
         const skill = getSkillById(10);
         if (skill) {
-            const skillParts = getSkillParts(skill);
             const client = await getOCClient();
             const openCodeMessage = await client.session.promptAsync({
                 path: { id: session.session_id },
                 body: {
                     model: {
-                        providerID: config.LLM_PROVIDER,
-                        modelID: config.LLM_MODEL,
+                        providerID: skill.provider || config.LLM_PROVIDER,
+                        modelID: skill.model || config.LLM_MODEL,
                     },
                     parts: [
                         {
                             type: 'text',
-                            text: `执行${skill.name}，skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}，不要在应答中使用'tool'的'question'等类似内容。${skill.extra_arguments || ''}`,
+                            text: `执行${skill.name}，skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}。${skill.extra_arguments || ''}`,
                         }
                     ]
                 }

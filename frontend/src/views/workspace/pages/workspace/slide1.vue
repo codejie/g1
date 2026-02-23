@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col">
+  <div class="h-full flex flex-col overflow-hidden">
     <div class="flex-shrink-0 flex justify-between items-center p-4 border-b">
       <div>
         <h1 class="text-2xl font-bold">Slide 1 Page</h1>
@@ -15,7 +15,7 @@
       </button>
     </div>
 
-    <div class="flex" style="height: calc(100vh - 150px)">
+    <div class="flex-1 flex min-h-0">
       <!-- Left Panel (Chat) -->
       <div class="flex-1 flex flex-col min-w-0">
         <ChatPanel
@@ -216,11 +216,11 @@ const initSSE = async (id: number) => {
               const trimmedLine = line.trim()
               if (!trimmedLine) continue
               const parsed = JSON.parse(trimmedLine)
-              console.log('SSE event:', parsed)
+              // console.log('SSE event:', parsed)
               // Pass event and data to ChatPanel component
               if (parsed.event === 'oc_session_message') {
                 chatPanelRef.value?.handleSSEEvent(parsed.event, parsed.data)
-                // if (parsed.data.type === 'message.part.updated' &&  parsed.data.properties.part.type === 'tool') {
+                // if (parsed.data.properties.part.type === 'tool') {
                 //   sseMessages.value.push({
                 //     event: parsed.event || 'unknown',
                 //     data: parsed.data || {},
@@ -228,6 +228,9 @@ const initSSE = async (id: number) => {
                 //   })                  
                 // }
               } else {
+                if (parsed.event.startsWith('server.')) {
+                  continue
+                }
                 sseMessages.value.push({
                   event: parsed.event || 'unknown',
                   data: parsed.data || {},

@@ -55,7 +55,9 @@
     "title": "菜单",
     "workspace": "工作空间",
     "deployments": "部署发布",
-    "monetization": "应用变现"
+    "monetization": "应用变现",
+    "expand": "展开",
+    "collapse": "收起"
   },
   "workspace": {
     "create_app_title": "创建新应用",

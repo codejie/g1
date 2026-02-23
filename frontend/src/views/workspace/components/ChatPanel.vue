@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full min-w-0 bg-white">
+  <div class="flex flex-col h-full min-w-0 bg-white relative">
     <!-- 消息展示区域 -->
     <div class="flex-grow p-4 overflow-y-auto" ref="messagesContainer">
       <div
@@ -36,6 +36,11 @@
       </div>
     </div>
 
+    <!-- 浮动的 tool 消息 -->
+    <div v-if="activeToolPart" class="absolute bottom-[84px] left-0 w-full z-10 transition-all duration-300">
+      <ToolMessage :part="activeToolPart" @update-disabled="(val: boolean) => disabled = val" @close="activeToolPart = null" />
+    </div>
+
     <!-- 消息发送区域 -->
     <div class="flex-shrink-0 p-4 border-t bg-gray-50">
       <div class="flex items-center bg-white rounded-lg border border-gray-300 shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all">
@@ -64,6 +69,7 @@
 <script setup lang="ts">
 import { ref, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ToolMessage from './ToolMessage.vue'
 
 const { t } = useI18n()
 
@@ -90,6 +96,7 @@ const chatMessages = ref<ChatMessage[]>(props.initialMessages || [])
 const userInput = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
 const disabled = ref(false)
+const activeToolPart = ref<any>(null)
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -105,6 +112,7 @@ const handleSend = () => {
     const msg = userInput.value.trim()
     chatMessages.value.push({ sender: 'user', text: msg, type: 'text' })
     userInput.value = ''
+    activeToolPart.value = null
     emit('send', msg)
     scrollToBottom()
   }
@@ -129,29 +137,45 @@ const handleSSEEvent = (event: string, data: any) => {
     if (type === 'message.part.updated') {
       const part = properties.part || {}
       const partType = part.type
-      // const content = part.content || ''
-      
-      if (partType === 'text') {
-        // chatMessages.value.push({ sender: 'ai', text: part.text, type: 'text' })
-      } else if (partType === 'assistant') {
-        chatMessages.value.push({ sender: 'ai', text: part.text, type: 'assistant' })
-      } else if (partType === 'reasoning') {
-        chatMessages.value.push({ sender: 'ai', text: part.text, type: 'reasoning' })
+      if (partType === 'text' || partType === 'assistant' || partType === 'reasoning') {
+        // activeToolPart.value = null
+        disabled.value = false
+        // 寻找最近的一个 stream
+        let lastStreamMsg: ChatMessage | null = null;
+        for (let i = chatMessages.value.length - 1; i >= 0; i--) {
+          if (chatMessages.value[i].type === 'stream') {
+            lastStreamMsg = chatMessages.value[i];
+            break;
+          }
+        }
+
+        if (lastStreamMsg && lastStreamMsg.text === part.text) {
+          lastStreamMsg.type = partType;
+        } else {
+          if (part.text && part.text.length > 0) {
+            chatMessages.value.push({ sender: 'ai', text: part.text, type: partType });
+          }        
+        }
+
+
       } else if (partType === 'tool') {
-        chatMessages.value.push({ sender: 'ai', text: part.tool, type: 'tool' })
+        activeToolPart.value = part;
       } else if (partType === 'step-start') {
         // 消息开始
       } else if (partType === 'step-finish') {
         // 消息结束
+        activeToolPart.value = null;
       }
     } else if (type === 'message.part.delta') {
+      // activeToolPart.value = null;
+      disabled.value = false;
       const delta = properties.delta || ''
       // For stream, append to the last message if it's an AI message or create a new one
       const lastMsg = chatMessages.value[chatMessages.value.length - 1]
-      if (lastMsg && lastMsg.sender === 'ai') {
+      if (lastMsg && lastMsg.type === 'stream') {
         lastMsg.text += delta
       } else {
-        chatMessages.value.push({ sender: 'ai', text: delta, type: 'assistant' })
+        chatMessages.value.push({ sender: 'ai', text: delta, type: 'stream' })
       }
     } else if (type === 'session.status') {
       console.log('Session status updated:', properties.status)

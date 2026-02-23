@@ -46,9 +46,10 @@ const config: Config = {
   OPENCODE_URL: 'http://127.0.0.1:10090',
   // LLM_PROVIDER: 'opencode',
   // LLM_MODEL: 'glm-5-free',
+  // LLM_PROVIDER: 'nvidia',
+  // LLM_MODEL: 'openai/gpt-oss-120b',
   LLM_PROVIDER: 'deepseek',
   LLM_MODEL: 'deepseek-chat',
-
 
   // Files
   FILES_ROOT: path.join(__dirname, '..', '..', 'data', 'files_root'),
