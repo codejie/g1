@@ -33,7 +33,8 @@ export const skills: Skill[] = [
         name: 'test_file_maker', // Renamed from '测试Agent' to match typical skill identifier if used as command, or keeping as placeholder
         description: '测试文件生成的Skill',
         version: '1',
-        extra_arguments: "不要使用'question'等类似'tool'方式提示用户输入，全部采用消息/message方式交互。", // "需要时，使用'question'等类似'tool'发起询问内容。",
+        // extra_arguments: "不要使用'question'等类似'tool'方式提示用户输入，全部采用消息/message方式交互。", // "需要时，使用'question'等类似'tool'发起询问内容。",
+        extra_arguments: "需要提示用户时，使用'question'等类似'tool'发起询问内容。",
         // provider: 'opencode',
         // model: 'kimi-k2.5-free'
     }

@@ -7,6 +7,8 @@ import type {
   SessionMessageResponse,
   SkillsCallbackRequest,
   SkillsCallbackResponse,
+  QuestionReplyRequest,
+  QuestionReplyResponse,
   SSERequest
 } from '../types/oc'
 
@@ -25,6 +27,10 @@ const ocService = {
 
   skillsCallback: async (data: SkillsCallbackRequest): Promise<SkillsCallbackResponse> => {
     return await api.post<SkillsCallbackResponse>('/oc/skills/callback', data)
+  },
+
+  questionReply: async (data: QuestionReplyRequest): Promise<QuestionReplyResponse> => {
+    return await api.post<QuestionReplyResponse>('/oc/session/question_reply', data)
   },
 
   getSSEUrl: (params: SSERequest): string => {

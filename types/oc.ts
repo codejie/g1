@@ -90,6 +90,22 @@ export interface SkillsCallbackResponse extends Response {
     result?: any
 }
 
+// Question Reply
+export interface QuestionReplyRequest extends Request {
+    session_id: number
+    question_id: string
+    message_id?: string
+    call_id?: string
+    content: string
+    extra?: Record<string, any>
+}
+
+export interface QuestionReplyResponse extends Response {
+    code: number
+    message?: string
+    result?: any
+}
+
 // Database model type for OC Skill Callback
 export type OCSkillCallback = {
     id: number

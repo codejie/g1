@@ -48,9 +48,11 @@ const config: Config = {
   // LLM_MODEL: 'glm-5-free',
   // LLM_PROVIDER: 'nvidia',
   // LLM_MODEL: 'openai/gpt-oss-120b',
-  LLM_PROVIDER: 'deepseek',
-  LLM_MODEL: 'deepseek-chat',
+  // LLM_PROVIDER: 'deepseek',
+  // LLM_MODEL: 'deepseek-chat',
 
+  LLM_PROVIDER: 'nvidia',
+  LLM_MODEL: 'minimaxai/minimax-m2.1',
   // Files
   FILES_ROOT: path.join(__dirname, '..', '..', 'data', 'files_root'),
   // DOWNLOAD_ROOT: path.join(__dirname, '..', '..', 'data', 'downloads'),

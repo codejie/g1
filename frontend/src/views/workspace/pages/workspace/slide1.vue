@@ -22,6 +22,7 @@
           ref="chatPanelRef"
           :disabled="isInitializing"
           @send="handleChatSend"
+          @reply="handleQuestionReply"
         />
       </div>
 
@@ -73,7 +74,7 @@
               清空列表
             </button>
           </div>
-          <div v-if="isPanelOpen" class="flex-grow p-4 overflow-y-auto">
+          <div v-if="isPanelOpen" class="flex-grow p-4 overflow-y-auto" ref="sseMessagesContainerRef">
             <h3 class="text-lg font-semibold mb-3">消息记录</h3>
             <div v-if="sseMessages.length === 0" class="text-gray-500 text-sm">
               暂无消息
@@ -108,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import ocService from '@/services/oc'
@@ -136,7 +137,18 @@ interface SSEMessage {
   timestamp: string
 }
 
+const sseMessagesContainerRef = ref<HTMLElement | null>(null)
+
 const sseMessages = ref<SSEMessage[]>([])
+
+const scrollToBottomSSE = async () => {
+  await nextTick()
+  if (sseMessagesContainerRef.value) {
+    sseMessagesContainerRef.value.scrollTop = sseMessagesContainerRef.value.scrollHeight
+  }
+}
+
+watch(() => sseMessages.value.length, scrollToBottomSSE, { deep: true })
 
 const clearSseMessages = () => {
   sseMessages.value = []
@@ -218,15 +230,14 @@ const initSSE = async (id: number) => {
               const parsed = JSON.parse(trimmedLine)
               // console.log('SSE event:', parsed)
               // Pass event and data to ChatPanel component
-              if (parsed.event === 'oc_session_message') {
+              if (parsed.event === 'oc_session_message' || parsed.event === 'oc_session_message_question') {
                 chatPanelRef.value?.handleSSEEvent(parsed.event, parsed.data)
-                // if (parsed.data.properties.part.type === 'tool') {
-                //   sseMessages.value.push({
-                //     event: parsed.event || 'unknown',
-                //     data: parsed.data || {},
-                //     timestamp: formatTime()
-                //   })                  
-                // }
+                if (parsed.data.type === 'message.part.delta') continue;
+                sseMessages.value.push({
+                  event: parsed.event || 'unknown',
+                  data: parsed.data || {},
+                  timestamp: formatTime()
+                })                  
               } else {
                 if (parsed.event.startsWith('server.')) {
                   continue
@@ -288,6 +299,36 @@ const handleChatSend = async (message: string) => {
     } catch (error) {
       console.error('Failed to send message:', error)
       chatPanelRef.value?.addMessage('ai', 'Error: Failed to get response from AI.')
+    }
+  }
+}
+
+/**
+ * Handles question reply from ChatPanel
+ */
+const handleQuestionReply = async (message: string, data: any) => {
+  console.log('handleQuestionReply', message, data);
+  if (sessionId.value !== null) {
+    try {
+      console.log('handleQuestionReply', message, data);
+      const response = await ocService.questionReply({
+        session_id: sessionId.value,
+        question_id: data?.properties?.id || '',
+        message_id: data?.properties?.message_id || '',
+        call_id: data?.properties?.call_id || '',
+        content: message,
+        extra: {
+          original_question: data
+        }
+      })
+
+      // We can also add a system message if needed, or rely on SSE state updates
+      if (response.code === 0) {
+        // success
+      }
+    } catch (error) {
+      console.error('Failed to reply question:', error)
+      chatPanelRef.value?.addMessage('ai', 'Error: Failed to send question reply.')
     }
   }
 }

@@ -3,7 +3,7 @@ import {
     CreateOCSessionRequest, CreateOCSessionResponse,
     UpdateOCSessionRequest, UpdateOCSessionResponse,
     SendSessionMessageRequest, SendSessionMessageResponse,
-    SkillsCallbackRequest
+    SkillsCallbackRequest, QuestionReplyRequest
 } from '../../types/oc';
 import { RESPONSE_CODES } from '../../types/common';
 import { sendSuccess, sendError } from '../../utils/response';
@@ -32,7 +32,7 @@ async function getOCClient() {
                 console.log('[OpenCode] SSE subscription started');
 
                 for await (const event of response.stream) {
-                    // console.log('[OpenCode] SSE event:', event);
+                    console.log('[OpenCode] SSE event:', event);
                     const eventType = event.type || '';
                     if (eventType.startsWith('message.') || eventType.startsWith('session.')) {
                         let openCodeSessionId: string | undefined;
@@ -47,7 +47,17 @@ async function getOCClient() {
                             if (session) {
                                 sendSSEMessage(session.id, 'oc_session_message', event);
                             }
-                        }                        
+                        }
+                    } else if (eventType.startsWith('question.')) {
+                        const openCodeSession = event.properties?.sessionID;
+                        if (openCodeSession) {
+                            const session = await OCSessionModel.findBySessionId(openCodeSession);
+                            if (session) {
+                                sendSSEMessage(session.id, 'oc_session_message_question', event);
+                            }
+                        } else {
+                            console.log('[OpenCode] SSE question event without sessionID:', event);
+                        }
                     } else if (eventType.startsWith('server.')) {
                         // console.log('[OpenCode] SSE server event:', event);
                     } else {
@@ -263,6 +273,45 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
         });
     } catch (error: any) {
         return sendError(reply, RESPONSE_CODES.INTERNAL_ERROR, error?.message || 'Failed to send message');
+    }
+};
+
+// Question Reply handler
+export const questionReply = async (request: FastifyRequest<{ Body: QuestionReplyRequest }>, reply: FastifyReply) => {
+    if (!request.user) {
+        return sendError(reply, RESPONSE_CODES.UNAUTHORIZED, 'Authentication required');
+    }
+
+    const userId = (request.user as any).id;
+    const { session_id, question_id, message_id, call_id, content, extra } = request.body;
+
+    try {
+        if (!session_id || !question_id || !content) {
+            return sendError(reply, RESPONSE_CODES.INVALID_REQUEST, 'Missing required fields');
+        }
+
+        const session = await OCSessionModel.findByLocalId(session_id);
+        if (!session) {
+            return sendError(reply, RESPONSE_CODES.NOT_FOUND, 'Session not found');
+        }
+
+        if (session.user_id !== userId) {
+            return sendError(reply, RESPONSE_CODES.FORBIDDEN, 'Not authorized to access this session');
+        }
+
+        const client = await getOCClient();
+        await client.question.reply({
+            requestID: question_id,
+            answers: [[content]]
+        });
+
+        return sendSuccess(reply, {
+            code: 0,
+            message: 'Question replied successfully',
+            result: null
+        });
+    } catch (error: any) {
+        return sendError(reply, RESPONSE_CODES.INTERNAL_ERROR, error?.message || 'Failed to reply question');
     }
 };
 

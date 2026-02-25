@@ -128,3 +128,28 @@
     type: string; // 数据类型，
     data: any; // 数据
 }
+```
+
+### QuestionReply接口
+- 描述：提供前端页面调用，用于向OpenCode发送问题反馈; oc模块收到请求后，调用OpenCode的*QuestionReply消息接口*，将问题反馈转发到OpenCode接口，并获取OpenCode接口返回的响应消息，重新组织为应答数据返回给用户
+- 接口路径: `/oc/session/question_reply`
+- 请求方法: `POST`
+- 请求数据结构:
+```typescript
+{
+    session_id: number; // 会话ID
+    question_id: string; // 问题ID
+    message_id?: string; // 消息ID
+    call_id?: string; // 调用ID
+    content: string; // 用户输入的消息内容
+    extra?: Record<string, any>; // 其他可选参数，保留
+}
+```
+- 应答数据结构:
+```typescript
+{
+    code: number; // 是否成功接收技能回调数据
+    message?: string; // 其他可选信息，如错误消息等
+    result?: any; // 其他可选数据，如处理结果等
+}
+```

@@ -138,6 +138,38 @@ export default async function (fastify: FastifyInstance) {
         }
     }, ocHandlers.sendSessionMessage);
 
+    // Question Reply
+    fastify.post('/oc/session/question_reply', {
+        preHandler: [authenticate],
+        schema: {
+            description: 'Reply to a question from OpenCode session',
+            tags: ['OpenCode'],
+            security: [{ bearerAuth: [] }],
+            body: {
+                type: 'object',
+                required: ['session_id', 'question_id', 'content'],
+                properties: {
+                    session_id: { type: 'number', description: 'Session ID' },
+                    question_id: { type: 'string', description: 'Question ID' },
+                    message_id: { type: 'string', description: 'Message ID' },
+                    call_id: { type: 'string', description: 'Call ID' },
+                    content: { type: 'string', description: 'User answer content' },
+                    extra: { type: 'object', description: 'Additional optional parameters', additionalProperties: true }
+                }
+            },
+            response: {
+                200: {
+                    type: 'object',
+                    properties: {
+                        code: { type: 'number' },
+                        message: { type: 'string' },
+                        result: { type: 'object', additionalProperties: true }
+                    }
+                }
+            }
+        }
+    }, ocHandlers.questionReply);
+
     // Skills Callback
     fastify.post('/oc/skills/callback', {
         schema: {

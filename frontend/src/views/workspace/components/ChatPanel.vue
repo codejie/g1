@@ -90,6 +90,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'send', message: string): void
+  (e: 'reply', message: string, data: any): void
 }>()
 
 const chatMessages = ref<ChatMessage[]>(props.initialMessages || [])
@@ -97,6 +98,7 @@ const userInput = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
 const disabled = ref(false)
 const activeToolPart = ref<any>(null)
+const pendingToolQuestionData = ref<any>(null)
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -113,7 +115,14 @@ const handleSend = () => {
     chatMessages.value.push({ sender: 'user', text: msg, type: 'text' })
     userInput.value = ''
     activeToolPart.value = null
-    emit('send', msg)
+    
+    if (pendingToolQuestionData.value) {
+      emit('reply', msg, pendingToolQuestionData.value)
+      pendingToolQuestionData.value = null
+    } else {
+      emit('send', msg)
+    }
+    
     scrollToBottom()
   }
 }
@@ -141,10 +150,12 @@ const handleSSEEvent = (event: string, data: any) => {
         // activeToolPart.value = null
         disabled.value = false
         // 寻找最近的一个 stream
+        let lastStreamMsgIndex = -1;
         let lastStreamMsg: ChatMessage | null = null;
         for (let i = chatMessages.value.length - 1; i >= 0; i--) {
           if (chatMessages.value[i].type === 'stream') {
             lastStreamMsg = chatMessages.value[i];
+            lastStreamMsgIndex = i;
             break;
           }
         }
@@ -152,6 +163,9 @@ const handleSSEEvent = (event: string, data: any) => {
         if (lastStreamMsg && lastStreamMsg.text === part.text) {
           lastStreamMsg.type = partType;
         } else {
+          if (lastStreamMsgIndex !== -1) {
+            chatMessages.value.splice(lastStreamMsgIndex, 1);
+          }
           if (part.text && part.text.length > 0) {
             chatMessages.value.push({ sender: 'ai', text: part.text, type: partType });
           }        
@@ -186,6 +200,11 @@ const handleSSEEvent = (event: string, data: any) => {
       }
     } else if (type === 'session.idle') {
       disabled.value = false
+    }
+  } else if (event === 'oc_session_message_question') {
+    console.log('ChatPanel [SSE] Question Event:', event, data)
+    if (data && data.type === 'question.asked') {
+      pendingToolQuestionData.value = data
     }
   }
   
