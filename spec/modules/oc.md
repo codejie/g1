@@ -141,7 +141,8 @@
     question_id: string; // 问题ID
     message_id?: string; // 消息ID
     call_id?: string; // 调用ID
-    content: string; // 用户输入的消息内容
+    result?: string; // 'reply' or 'reject'， default is 'reply'
+    content?: string; // 用户输入的消息内容
     extra?: Record<string, any>; // 其他可选参数，保留
 }
 ```

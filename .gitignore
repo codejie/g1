@@ -6,3 +6,4 @@ backend/data
 skills/
 package-lock.json
 *.map
+*.tsbuildinfo

@@ -96,7 +96,8 @@ export interface QuestionReplyRequest extends Request {
     question_id: string
     message_id?: string
     call_id?: string
-    content: string
+    result?: string
+    content?: string
     extra?: Record<string, any>
 }
 

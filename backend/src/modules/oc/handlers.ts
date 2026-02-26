@@ -14,6 +14,7 @@ import fsPromises from 'fs/promises';
 import path from 'path';
 import { getSkillById, getSkillParts } from '../../skills/index.js';
 import * as sdk from '@opencode-ai/sdk';
+import { customOCApi } from './custom-api.js';
 
 const OPENCODE_URL = config.OPENCODE_URL;
 const MESSAGE_DATA_DIR = path.join(process.cwd(), 'data', 'session_messages');
@@ -267,10 +268,10 @@ export const questionReply = async (request: FastifyRequest<{ Body: QuestionRepl
     }
 
     const userId = (request.user as any).id;
-    const { session_id, question_id, message_id, call_id, content, extra } = request.body;
+    const { session_id, question_id, message_id, call_id, result, content, extra } = request.body;
 
     try {
-        if (!session_id || !question_id || !content) {
+        if (!session_id || !question_id) {
             return sendError(reply, RESPONSE_CODES.INVALID_REQUEST, 'Missing required fields');
         }
 
@@ -283,17 +284,34 @@ export const questionReply = async (request: FastifyRequest<{ Body: QuestionRepl
             return sendError(reply, RESPONSE_CODES.FORBIDDEN, 'Not authorized to access this session');
         }
 
-        const client = await getOCClient();
-        await client.question.reply({
-            requestID: question_id,
-            answers: [[content]]
-        });
+        if (result === 'reject') {
+            // Reject the question
+            await customOCApi.question.reject({
+                requestID: question_id
+            });
 
-        return sendSuccess(reply, {
-            code: 0,
-            message: 'Question replied successfully',
-            result: null
-        });
+            return sendSuccess(reply, {
+                code: 0,
+                message: 'Question rejected successfully',
+                result: null
+            });
+        } else {
+            // Default: reply to the question
+            if (!content) {
+                return sendError(reply, RESPONSE_CODES.INVALID_REQUEST, 'Content is required for reply');
+            }
+
+            await customOCApi.question.reply({
+                requestID: question_id,
+                answers: [[content]]
+            });
+
+            return sendSuccess(reply, {
+                code: 0,
+                message: 'Question replied successfully',
+                result: null
+            });
+        }
     } catch (error: any) {
         return sendError(reply, RESPONSE_CODES.INTERNAL_ERROR, error?.message || 'Failed to reply question');
     }

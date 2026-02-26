@@ -316,20 +316,24 @@ const handleQuestionReply = async (message: string, data: any) => {
         question_id: data?.properties?.id || '',
         message_id: data?.properties?.message_id || '',
         call_id: data?.properties?.call_id || '',
+        result: 'reply',
         content: message,
         extra: {
-          original_question: data
+          // original_question: data
         }
       })
 
       // We can also add a system message if needed, or rely on SSE state updates
-      if (response.code === 0) {
-        // success
-      }
+      console.log('handleQuestionReply response:', response);
+      // if (response.code === 0) {
+      //   // success
+      // }
     } catch (error) {
       console.error('Failed to reply question:', error)
       chatPanelRef.value?.addMessage('ai', 'Error: Failed to send question reply.')
     }
+  } else {
+    console.error('Session not found');
   }
 }
 </script>

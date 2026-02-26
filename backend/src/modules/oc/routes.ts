@@ -147,13 +147,14 @@ export default async function (fastify: FastifyInstance) {
             security: [{ bearerAuth: [] }],
             body: {
                 type: 'object',
-                required: ['session_id', 'question_id', 'content'],
+                required: ['session_id', 'question_id'],
                 properties: {
                     session_id: { type: 'number', description: 'Session ID' },
                     question_id: { type: 'string', description: 'Question ID' },
                     message_id: { type: 'string', description: 'Message ID' },
                     call_id: { type: 'string', description: 'Call ID' },
-                    content: { type: 'string', description: 'User answer content' },
+                    result: { type: 'string', enum: ['reply', 'reject'], description: 'Action type: reply or reject, default is reply' },
+                    content: { type: 'string', description: 'User answer content (required when result is reply)' },
                     extra: { type: 'object', description: 'Additional optional parameters', additionalProperties: true }
                 }
             },
