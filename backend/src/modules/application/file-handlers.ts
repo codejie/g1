@@ -1,15 +1,15 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { 
+import {
     FileUploadRequest, FileUploadResponse,
     FileDownloadRequest, FileDownloadResponse,
     GetApplicationFilesRequest, GetApplicationFilesResponse,
     DeleteFileRequest, DeleteFileResponse
-} from '../../types/application';
-import { RESPONSE_CODES } from '../../types/common';
-import { ApplicationModel, AppFileModel } from './model';
-import { sendSuccess, sendError } from '../../utils/response';
+} from '../../types/application.js';
+import { RESPONSE_CODES } from '../../types/common.js';
+import { ApplicationModel, AppFileModel } from './model.js';
+import { sendSuccess, sendError } from '../../utils/response.js';
 import path from 'path';
-import config from '../../config';
+import config from '../../config/index.js';
 import fs from 'fs/promises';
 
 const UPLOAD_DIR = config.UPLOAD_DIR;
@@ -72,7 +72,7 @@ export const fileUpload = async (request: FastifyRequest, reply: FastifyReply) =
 
     try {
         const buffer = await file.toBuffer();
-        
+
         await fs.mkdir(path.dirname(filePath), { recursive: true });
         await fs.writeFile(filePath, buffer);
 

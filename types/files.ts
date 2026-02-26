@@ -1,4 +1,4 @@
-import { PageInfo, Request, Response } from './common'
+import { PageInfo, Request, Response } from './common.js'
 
 export interface FileItem {
     path: string

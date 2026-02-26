@@ -1,5 +1,5 @@
 import { FastifyReply } from 'fastify';
-import { RESPONSE_CODES } from '../types/common';
+import { RESPONSE_CODES } from '../types/common.js';
 
 export function sendSuccess(reply: FastifyReply, data: any, message: string = 'Success', httpCode: number = RESPONSE_CODES.HTTP_OK): void {
     const response = {

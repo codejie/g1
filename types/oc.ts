@@ -1,4 +1,4 @@
-import type { Request, Response } from './common'
+import type { Request, Response } from './common.js'
 
 // Session types based on OpenCode API
 export type OCSessionType = 0 | 1 | 2 // 0/general, 1/coding, 2/debugging

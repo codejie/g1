@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { 
+import {
     StudioListRequest, StudioListResponse,
     CreateStudioRequest, CreateStudioResponse,
     UpdateStudioRequest, UpdateStudioResponse,
@@ -8,11 +8,12 @@ import {
     AddStudioMemberRequest, AddStudioMemberResponse,
     RemoveStudioMemberRequest, RemoveStudioMemberResponse,
     UpdateStudioMemberRequest, UpdateStudioMemberResponse
-} from '../../types/studio';
-import { Response, RESPONSE_CODES } from '../../types/common';
-import { StudioModel, StudioMemberModel } from './model';
-import { UserModel } from '../user/model';
-import { ApiError } from '../../utils/errors';
+} from '../../types/studio.js';
+import type { Response } from '../../types/common.js';
+import { RESPONSE_CODES } from '../../types/common.js';
+import { StudioModel, StudioMemberModel } from './model.js';
+import { UserModel } from '../user/model.js';
+import { ApiError } from '../../utils/errors.js';
 
 // Studio List handler
 export const studioList = async (request: FastifyRequest<{ Body: StudioListRequest }>, reply: FastifyReply) => {
@@ -101,7 +102,7 @@ export const updateStudio = async (request: FastifyRequest<{ Body: UpdateStudioR
     }
 
     const updatedStudio = await StudioModel.update(id, { name, description, disabled });
-    
+
     if (!updatedStudio) {
         throw ApiError.notFound('Studio not found', RESPONSE_CODES.STUDIO_NOT_FOUND);
     }

@@ -1,5 +1,5 @@
-import { Studio, StudioMember } from '../../types/studio';
-import { db } from '../../config/database';
+import { Studio, StudioMember } from '../../types/studio.js';
+import { db } from '../../config/database.js';
 
 export class StudioModel {
     static async create(data: Omit<Studio, 'id' | 'created' | 'updated'>): Promise<Studio> {

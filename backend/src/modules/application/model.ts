@@ -1,5 +1,5 @@
-import { Application, AppFile } from '../../types/application';
-import { db } from '../../config/database';
+import { Application, AppFile } from '../../types/application.js';
+import { db } from '../../config/database.js';
 
 export class ApplicationModel {
     static async create(data: Omit<Application, 'id' | 'created' | 'updated'>): Promise<Application> {

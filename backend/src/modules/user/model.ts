@@ -1,5 +1,5 @@
-import { User, UserStudio, UserToken } from '../../types/user';
-import { db } from '../../config/database';
+import { User, UserStudio, UserToken } from '../../types/user.js';
+import { db } from '../../config/database.js';
 
 export class UserModel {
     static async create(userData: Omit<User, 'id' | 'created' | 'updated'>): Promise<User> {

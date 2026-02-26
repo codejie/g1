@@ -1,8 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
-import config from '../../config';
-import { FileItem } from '../../types/files';
-import { PageInfo } from '../../types/common';
+import config from '../../config/index.js';
+import { FileItem } from '../../types/files.js';
+import { PageInfo } from '../../types/common.js';
 
 export class FileService {
     private static getUserRoot(userId: number): string {

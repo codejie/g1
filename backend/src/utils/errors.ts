@@ -1,4 +1,4 @@
-import { RESPONSE_CODES } from '../types/common';
+import { RESPONSE_CODES } from '../types/common.js';
 
 export class ApiError extends Error {
     public readonly statusCode: number;

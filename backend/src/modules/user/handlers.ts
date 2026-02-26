@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { 
+import {
     GetUserRequest, GetUserResponse,
     GetUsersRequest, GetUsersResponse,
     LoginRequest, LoginResponse,
@@ -12,14 +12,14 @@ import {
     TokensRequest, TokensResponse, RevokeTokenRequest, RevokeTokenResponse,
     UserStudiosRequest, UserStudiosResponse, SwitchStudioRequest, SwitchStudioResponse,
     DeleteStudioRequest, DeleteStudioResponse, CreateStudioRequest, CreateStudioResponse
-} from '../../types/user';
-import { RESPONSE_CODES } from '../../types/common';
-import { UserModel, UserStudioModel, UserTokenModel } from './model';
-import { StudioModel } from '../studio/model';
-import { sendSuccess, sendError } from '../../utils/response';
+} from '../../types/user.js';
+import { RESPONSE_CODES } from '../../types/common.js';
+import { UserModel, UserStudioModel, UserTokenModel } from './model.js';
+import { StudioModel } from '../studio/model.js';
+import { sendSuccess, sendError } from '../../utils/response.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import config from '../../config';
+import config from '../../config/index.js';
 
 export const login = async (request: FastifyRequest<{ Body: LoginRequest }>, reply: FastifyReply) => {
     const { email, password } = request.body;
@@ -36,10 +36,10 @@ export const login = async (request: FastifyRequest<{ Body: LoginRequest }>, rep
         return sendError(reply, RESPONSE_CODES.INVALID_PASSWORD, 'Login failed: Incorrect password');
     }
 
-    const token = jwt.sign({ 
-        id: user.id, 
-        username: user.username, 
-        email: user.email 
+    const token = jwt.sign({
+        id: user.id,
+        username: user.username,
+        email: user.email
     }, config.JWT_SECRET, { expiresIn: config.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] });
 
     await UserTokenModel.create({
@@ -48,7 +48,7 @@ export const login = async (request: FastifyRequest<{ Body: LoginRequest }>, rep
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
         disabled: 0
     });
-    
+
     return sendSuccess(reply, {
         token,
         user: { ...user, password: undefined }
@@ -88,10 +88,10 @@ export const register = async (request: FastifyRequest<{ Body: RegisterRequest }
         disabled: 0
     });
 
-    const token = jwt.sign({ 
-        id: newUser.id, 
-        username: newUser.username, 
-        email: newUser.email 
+    const token = jwt.sign({
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email
     }, config.JWT_SECRET, { expiresIn: config.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] });
 
     await UserTokenModel.create({
@@ -108,13 +108,13 @@ export const register = async (request: FastifyRequest<{ Body: RegisterRequest }
 
 export const getUser = async (request: FastifyRequest<{ Body: GetUserRequest }>, reply: FastifyReply) => {
     const { id } = request.body;
-    
+
     const user = await UserModel.findById(id);
 
     if (!user) {
         return sendError(reply, RESPONSE_CODES.USER_NOT_FOUND, 'User not found');
     }
-    
+
     return sendSuccess(reply, { user: { ...user, password: undefined } });
 };
 
@@ -164,7 +164,7 @@ export const updateUser = async (request: FastifyRequest<{ Body: UpdateUserReque
     }
 
     const updatedUser = await UserModel.update(id, updateData);
-    
+
     if (!updatedUser) {
         return sendError(reply, RESPONSE_CODES.USER_NOT_FOUND, 'Update failed: User not found');
     }
@@ -180,7 +180,7 @@ export const deleteUser = async (request: FastifyRequest<{ Body: DeleteUserReque
     if (!success) {
         return sendError(reply, RESPONSE_CODES.USER_NOT_FOUND, 'Delete failed: User not found');
     }
-    
+
     return sendSuccess(reply, {
         message: 'User deleted successfully'
     });
@@ -225,7 +225,7 @@ export const updateProfile = async (request: FastifyRequest<{ Body: ProfileReque
     }
 
     const updatedUser = await UserModel.update(request.user.id, updateData);
-    
+
     if (!updatedUser) {
         return sendError(reply, RESPONSE_CODES.PROFILE_UPDATE_FAILED, 'Profile update failed');
     }

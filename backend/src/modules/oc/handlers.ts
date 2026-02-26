@@ -4,15 +4,16 @@ import {
     UpdateOCSessionRequest, UpdateOCSessionResponse,
     SendSessionMessageRequest, SendSessionMessageResponse,
     SkillsCallbackRequest, QuestionReplyRequest
-} from '../../types/oc';
-import { RESPONSE_CODES } from '../../types/common';
-import { sendSuccess, sendError } from '../../utils/response';
-import config from '../../config';
+} from '../../types/oc.js';
+import { RESPONSE_CODES } from '../../types/common.js';
+import { sendSuccess, sendError } from '../../utils/response.js';
+import config from '../../config/index.js';
 import { randomUUID } from 'crypto';
-import { OCSessionModel, OCSkillCallbackModel } from './model';
+import { OCSessionModel, OCSkillCallbackModel } from './model.js';
 import fsPromises from 'fs/promises';
 import path from 'path';
-import { getSkillById, getSkillParts } from '../../skills';
+import { getSkillById, getSkillParts } from '../../skills/index.js';
+import * as sdk from '@opencode-ai/sdk';
 
 const OPENCODE_URL = config.OPENCODE_URL;
 const MESSAGE_DATA_DIR = path.join(process.cwd(), 'data', 'session_messages');
@@ -20,8 +21,8 @@ const MESSAGE_DATA_DIR = path.join(process.cwd(), 'data', 'session_messages');
 let ocClient: any;
 async function getOCClient() {
     if (!ocClient) {
-        const sdk = await import('@opencode-ai/sdk');
-        ocClient = (sdk as any).createOpencodeClient({
+        // const sdk = await import('@opencode-ai/sdk');
+        ocClient = sdk.createOpencodeClient({
             baseUrl: OPENCODE_URL
         });
 
@@ -157,19 +158,10 @@ export const updateOCSession = async (request: FastifyRequest<{ Body: UpdateOCSe
                         }
                     ]
                 }
-            })
+            });
 
-
-            // Map response items similarly to sendSessionMessage
-            if (openCodeMessage && openCodeMessage.data.parts) {
-                items = openCodeMessage.data.parts.map((item: any) => ({
-                    id: item.id || randomUUID(),
-                    role: item.role || 'assistant',
-                    type: item.type || 'text',
-                    content: item.text || '',
-                    created: new Date().toISOString()
-                }));
-            }
+            // For async prompt, the result is streamed via SSE and there are no immediate parts returned.
+            // Items are not populated synchronously.
         }
 
         return sendSuccess(reply, {
@@ -213,7 +205,7 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
         };
 
         const client = await getOCClient();
-        const openCodeMessage = await client.session.promptAsync({
+        await client.session.promptAsync({
             path: { id: session.session_id },
             body: {
                 model: {
@@ -227,17 +219,9 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
                     }
                 ]
             }
-        })
-        console.log('[OpenCode Response]', JSON.stringify(openCodeMessage, null, 2));
+        });
 
-        // Map response items
-        const items = openCodeMessage.data.parts?.map((item: any) => ({
-            id: item.id,
-            role: item.role,
-            type: item.type,
-            content: item.text || '',
-            created: new Date().toISOString()
-        })) || [];
+        const items: any[] = []; // No synchronous items available with promptAsync
 
         // Store messages to file
         const messageFilePath = path.join(MESSAGE_DATA_DIR, `${session_id}.json`);
@@ -255,7 +239,7 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
             existingMessages.push({
                 user_message: userMessage,
                 opencode_response: {
-                    parts: openCodeMessage.data.parts || [],
+                    parts: [], // Async streaming response parts aren't available here
                     skill_id: 0
                 },
                 timestamp: new Date().toISOString()

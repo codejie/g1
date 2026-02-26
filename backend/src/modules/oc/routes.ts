@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import * as ocHandlers from './handlers';
-import { authenticate } from '../../middleware/auth';
+import * as ocHandlers from './handlers.js';
+import { authenticate } from '../../middleware/auth.js';
 
 export default async function (fastify: FastifyInstance) {
     // Create Session

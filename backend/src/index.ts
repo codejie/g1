@@ -1,5 +1,5 @@
 import Fastify from 'fastify';
-import { bootstrap } from './bootstrap';
+import { bootstrap } from './bootstrap.js';
 
 const server = Fastify({
   logger: true,

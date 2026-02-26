@@ -1,14 +1,14 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { 
+import {
     ApplicationListRequest, ApplicationListResponse,
     CreateApplicationRequest, CreateApplicationResponse,
     GetApplicationRequest, GetApplicationResponse,
     UpdateApplicationRequest, UpdateApplicationResponse,
     DeleteApplicationRequest, DeleteApplicationResponse
-} from '../../types/application';
-import { RESPONSE_CODES } from '../../types/common';
-import { ApplicationModel, AppFileModel } from './model';
-import { sendSuccess, sendError } from '../../utils/response';
+} from '../../types/application.js';
+import { RESPONSE_CODES } from '../../types/common.js';
+import { ApplicationModel, AppFileModel } from './model.js';
+import { sendSuccess, sendError } from '../../utils/response.js';
 
 // Application List handler
 export const applicationList = async (request: FastifyRequest<{ Body: ApplicationListRequest }>, reply: FastifyReply) => {
@@ -83,7 +83,7 @@ export const updateApplication = async (request: FastifyRequest<{ Body: UpdateAp
     const { id, type, name, description, icon, status, disabled } = request.body;
 
     const existingApplication = await ApplicationModel.findById(id);
-    
+
     if (!existingApplication) {
         return sendError(reply, RESPONSE_CODES.APPLICATION_NOT_FOUND, 'Application not found');
     }
@@ -129,7 +129,7 @@ export const deleteApplication = async (request: FastifyRequest<{ Body: DeleteAp
     const { id } = request.body;
 
     const existingApplication = await ApplicationModel.findById(id);
-    
+
     if (!existingApplication) {
         return sendError(reply, RESPONSE_CODES.APPLICATION_NOT_FOUND, 'Application not found');
     }

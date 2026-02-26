@@ -1,7 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { Response, RESPONSE_CODES } from '../types/common';
+import type { Response } from '../types/common.js';
+import { RESPONSE_CODES } from '../types/common.js';
 import jwt from 'jsonwebtoken';
-import config from '../config';
+import config from '../config/index.js';
 
 const JWT_SECRET = config.JWT_SECRET; // Must match secret in user.handlers.ts
 

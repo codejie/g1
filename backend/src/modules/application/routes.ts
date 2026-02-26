@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
-import * as applicationHandlers from './handlers';
-import * as fileHandlers from './file-handlers';
-import { authenticate } from '../../middleware/auth';
+import * as applicationHandlers from './handlers.js';
+import * as fileHandlers from './file-handlers.js';
+import { authenticate } from '../../middleware/auth.js';
 
 export default async function (fastify: FastifyInstance) {
     fastify.post('/application/list', {

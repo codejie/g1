@@ -1,6 +1,6 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
-import config from './index';
+import config from './index.js';
 
 const dbPath = config.DATABASE_PATH;
 

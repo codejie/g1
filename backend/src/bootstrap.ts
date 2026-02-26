@@ -1,3 +1,4 @@
+import { fileURLToPath, pathToFileURL } from 'url';
 import Fastify, { FastifyInstance } from 'fastify';
 import path from 'path';
 import fs from 'fs';
@@ -6,9 +7,13 @@ import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
-import db from './config/database';
-import { Response, RESPONSE_CODES } from './types/common';
-import config from './config';
+import db from './config/database.js';
+import type { Response } from './types/common.js';
+import { RESPONSE_CODES } from './types/common.js';
+import config from './config/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const UPLOAD_DIR = config.UPLOAD_DIR;
 
@@ -18,7 +23,7 @@ export const bootstrap = async (server: FastifyInstance) => {
 
     // Initialize database
     await db.init();
-    
+
     // Add database to fastify instance for access in routes
     server.decorate('db', db);
 
@@ -89,9 +94,13 @@ export const bootstrap = async (server: FastifyInstance) => {
     await Promise.all(moduleFiles.map(async module => {
         const modulePath = path.join(modulesPath, module);
         if (fs.statSync(modulePath).isDirectory()) {
-            const routesPath = path.join(modulePath, `routes.ts`);
-            if (fs.existsSync(routesPath)) {
-                const routeModule = await import(routesPath);
+            const routesPaths = [
+                path.join(modulePath, `routes.js`),
+                path.join(modulePath, `routes.ts`)
+            ];
+            const existingPath = routesPaths.find(p => fs.existsSync(p));
+            if (existingPath) {
+                const routeModule = await import(pathToFileURL(existingPath).href);
                 server.register(routeModule.default, { prefix: '/api' });
             }
         }

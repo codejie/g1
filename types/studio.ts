@@ -1,4 +1,4 @@
-import type { Request, Response, PaginationRequest } from './common'
+import type { Request, Response, PaginationRequest } from './common.js'
 
 export type Studio = {
   id: number

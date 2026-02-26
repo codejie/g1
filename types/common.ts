@@ -11,7 +11,7 @@ export type SortInfo = {
 
 export type Sort = SortInfo // For backward compatibility
 
-export interface Request {}
+export interface Request { }
 
 export interface Error {
   code: number

@@ -1,8 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { FileListRequest, FileDownloadRequest } from '../../types/files';
-import { FileService } from './service';
-import { sendSuccess, sendError } from '../../utils/response';
-import { RESPONSE_CODES } from '../../types/common';
+import { FileListRequest, FileDownloadRequest } from '../../types/files.js';
+import { FileService } from './service.js';
+import { sendSuccess, sendError } from '../../utils/response.js';
+import { RESPONSE_CODES } from '../../types/common.js';
 import fs from 'fs';
 import util from 'util';
 import path from 'path';

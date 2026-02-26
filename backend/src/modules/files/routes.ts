@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { listFiles, downloadFile, uploadFile } from './handlers';
-import { authenticate } from '../../middleware/auth';
+import { listFiles, downloadFile, uploadFile } from './handlers.js';
+import { authenticate } from '../../middleware/auth.js';
 
 export default async function (server: FastifyInstance) {
     // List Files
