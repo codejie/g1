@@ -48,15 +48,19 @@ const config: Config = {
 
   // OpenCode
   OPENCODE_URL: 'http://127.0.0.1:10090',
-  // LLM_PROVIDER: 'opencode',
+  LLM_PROVIDER: 'opencode',
+  LLM_MODEL: 'big-pickle',
   // LLM_MODEL: 'glm-5-free',
   // LLM_PROVIDER: 'nvidia',
   // LLM_MODEL: 'openai/gpt-oss-120b',
   // LLM_PROVIDER: 'deepseek',
   // LLM_MODEL: 'deepseek-chat',
 
-  LLM_PROVIDER: 'nvidia',
-  LLM_MODEL: 'minimaxai/minimax-m2.1',
+  // LLM_PROVIDER: 'nvidia',
+  // LLM_MODEL: 'minimaxai/minimax-m2.1',
+  // LLM_PROVIDER: 'ollama',
+  // LLM_MODEL: 'qwen3:8b',
+
   // Files
   FILES_ROOT: path.join(__dirname, '..', '..', 'data', 'files_root'),
   // DOWNLOAD_ROOT: path.join(__dirname, '..', '..', 'data', 'downloads'),

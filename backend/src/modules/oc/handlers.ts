@@ -34,7 +34,7 @@ async function getOCClient() {
                 console.log('[OpenCode] SSE subscription started');
 
                 for await (const event of response.stream) {
-                    console.log('[OpenCode] SSE event:', event);
+                    // console.log('[OpenCode] SSE event:', event);
                     const eventType = event.type || '';
                     if (eventType.startsWith('message.') || eventType.startsWith('session.')) {
                         let openCodeSessionId: string | undefined;

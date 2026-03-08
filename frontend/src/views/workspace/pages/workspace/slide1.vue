@@ -232,12 +232,12 @@ const initSSE = async (id: number) => {
               // Pass event and data to ChatPanel component
               if (parsed.event === 'oc_session_message' || parsed.event === 'oc_session_message_question') {
                 chatPanelRef.value?.handleSSEEvent(parsed.event, parsed.data)
-                if (parsed.data.type === 'message.part.delta') continue;
-                sseMessages.value.push({
-                  event: parsed.event || 'unknown',
-                  data: parsed.data || {},
-                  timestamp: formatTime()
-                })                  
+                // if (parsed.data.type === 'message.part.delta') continue;
+                // sseMessages.value.push({
+                //   event: parsed.event || 'unknown',
+                //   data: parsed.data || {},
+                //   timestamp: formatTime()
+                // })                  
               } else {
                 if (parsed.event.startsWith('server.')) {
                   continue
