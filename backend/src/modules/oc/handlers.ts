@@ -13,67 +13,9 @@ import { OCSessionModel, OCSkillCallbackModel } from './model.js';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { getSkillById, getSkillParts } from '../../skills/index.js';
-import * as sdk from '@opencode-ai/sdk';
 import { customOCApi } from './custom-api.js';
 
-const OPENCODE_URL = config.OPENCODE_URL;
 const MESSAGE_DATA_DIR = path.join(process.cwd(), 'data', 'session_messages');
-
-let ocClient: any;
-async function getOCClient() {
-    if (!ocClient) {
-        // const sdk = await import('@opencode-ai/sdk');
-        ocClient = sdk.createOpencodeClient({
-            baseUrl: OPENCODE_URL
-        });
-
-        // Subscribe to events from OpenCode
-        (async () => {
-            try {
-                const response = await ocClient.event.subscribe();
-                console.log('[OpenCode] SSE subscription started');
-
-                for await (const event of response.stream) {
-                    // console.log('[OpenCode] SSE event:', event);
-                    const eventType = event.type || '';
-                    if (eventType.startsWith('message.') || eventType.startsWith('session.')) {
-                        let openCodeSessionId: string | undefined;
-                        if (eventType === 'message.part.updated') {
-                            openCodeSessionId = event.properties?.part?.sessionID;
-                        } else {
-                            openCodeSessionId = event.properties?.sessionID;
-                        }
-                        // console.log('[OpenCode] SSE sessionID:', openCodeSessionId);
-                        if (openCodeSessionId) {
-                            const session = await OCSessionModel.findBySessionId(openCodeSessionId);
-                            if (session) {
-                                sendSSEMessage(session.id, 'oc_session_message', event);
-                            }
-                        }
-                    } else if (eventType.startsWith('question.')) {
-                        const openCodeSession = event.properties?.sessionID;
-                        if (openCodeSession) {
-                            const session = await OCSessionModel.findBySessionId(openCodeSession);
-                            if (session) {
-                                sendSSEMessage(session.id, 'oc_session_message_question', event);
-                            }
-                        } else {
-                            console.log('[OpenCode] SSE question event without sessionID:', event);
-                        }
-                    } else if (eventType.startsWith('server.')) {
-                        // console.log('[OpenCode] SSE server event:', event);
-                    } else {
-                        console.log('[OpenCode] SSE unknown event:', event);
-                    }
-                }
-            } catch (error) {
-                console.error('[OpenCode] SSE subscription error:', error);
-                ocClient = null;
-            }
-        })();
-    }
-    return ocClient;
-}
 
 // Map to store session_id to SSE connection relationship
 const sseConnections = new Map<number, FastifyReply>();
@@ -88,20 +30,15 @@ export const createOCSession = async (request: FastifyRequest<{ Body: CreateOCSe
     const { type, title, extra } = request.body;
 
     try {
-        const client = await getOCClient();
-        const openCodeSession = await client.session.create({
-            body: {
-                title: title || 'New Session'
-            }
-        });
+        const openCodeSession = await customOCApi.session.create(title || 'New Session');
 
         // Save session to database
         const session = await OCSessionModel.create({
             user_id: userId,
-            session_id: openCodeSession.data.id,
+            session_id: openCodeSession.id,
             parent_id: extra?.parent_id || null,
             directory: extra?.directory || null,
-            title: title || openCodeSession.data.title || null,
+            title: title || openCodeSession.title || null,
             type: type || 0,
             skill_id: 0,
             disabled: 0
@@ -144,32 +81,20 @@ export const updateOCSession = async (request: FastifyRequest<{ Body: UpdateOCSe
         // Get app_test skill and send command
         const skill = getSkillById(10);
         if (skill) {
-            const client = await getOCClient();
-            const openCodeMessage = await client.session.promptAsync({
-                path: { id: session.session_id },
-                body: {
-                    model: {
-                        providerID: skill.provider || config.LLM_PROVIDER,
-                        modelID: skill.model || config.LLM_MODEL,
-                    },
-                    parts: [
-                        {
-                            type: 'text',
-                            text: `执行${skill.name}，skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}。${skill.extra_arguments || ''}`,
-                        }
-                    ]
-                }
+            await customOCApi.session.promptAsync({
+                sessionId: session.session_id,
+                providerID: skill.provider || config.LLM_PROVIDER,
+                modelID: skill.model || config.LLM_MODEL,
+                text: `执行${skill.name}，skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}。${skill.extra_arguments || ''}`
             });
-
-            // For async prompt, the result is streamed via SSE and there are no immediate parts returned.
-            // Items are not populated synchronously.
+            return sendSuccess(reply, {
+                session_id: session_id,
+                skill_id: skill.id,
+                items: items.length > 0 ? items : undefined
+            });
+        } else {
+            return sendError(reply, RESPONSE_CODES.NOT_FOUND, 'Skill not found');
         }
-
-        return sendSuccess(reply, {
-            session_id: session_id,
-            skill_id: skill.id,
-            items: items.length > 0 ? items : undefined
-        });
     } catch (error: any) {
         return sendError(reply, RESPONSE_CODES.INTERNAL_ERROR, error?.message || 'Failed to update session');
     }
@@ -205,21 +130,11 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
             created: new Date().toISOString()
         };
 
-        const client = await getOCClient();
-        await client.session.promptAsync({
-            path: { id: session.session_id },
-            body: {
-                model: {
-                    providerID: extra?.provider_id || config.LLM_PROVIDER,
-                    modelID: extra?.model_id || config.LLM_MODEL,
-                },
-                parts: [
-                    {
-                        type: 'text',
-                        text: content
-                    }
-                ]
-            }
+        await customOCApi.session.promptAsync({
+            sessionId: session.session_id,
+            providerID: extra?.provider_id || config.LLM_PROVIDER,
+            modelID: extra?.model_id || config.LLM_MODEL,
+            text: content
         });
 
         const items: any[] = []; // No synchronous items available with promptAsync
@@ -387,6 +302,37 @@ export function sendSSEMessage(session_id: number, event: string, data: any) {
     }
     return false;
 }
+
+// Initialize OpenCode client and subscribe to SSE events
+customOCApi.init(async (event) => {
+    const eventType = event.type || '';
+    if (eventType.startsWith('message.') || eventType.startsWith('session.')) {
+        let openCodeSessionId: string | undefined;
+        if (eventType === 'message.part.updated') {
+            openCodeSessionId = event.properties?.part?.sessionID;
+        } else {
+            openCodeSessionId = event.properties?.sessionID;
+        }
+        if (openCodeSessionId) {
+            const session = await OCSessionModel.findBySessionId(openCodeSessionId);
+            if (session) {
+                sendSSEMessage(session.id, 'oc_session_message', event);
+            }
+        }
+    } else if (eventType.startsWith('question.')) {
+        const openCodeSession = event.properties?.sessionID;
+        if (openCodeSession) {
+            const session = await OCSessionModel.findBySessionId(openCodeSession);
+            if (session) {
+                sendSSEMessage(session.id, 'oc_session_message_question', event);
+            }
+        } else {
+            console.log('[OpenCode] SSE question event without sessionID:', event);
+        }
+    } else if (!eventType.startsWith('server.')) {
+        console.log('[OpenCode] SSE unknown event:', event);
+    }
+});
 
 // SSE handler
 export const sseStream = async (request: FastifyRequest<{ Querystring: { session_id: number; skill_id?: number; skill_name?: string } }>, reply: FastifyReply) => {
