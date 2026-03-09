@@ -1,8 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import {
-    CreateOCSessionRequest, CreateOCSessionResponse,
-    UpdateOCSessionRequest, UpdateOCSessionResponse,
-    SendSessionMessageRequest, SendSessionMessageResponse,
+    CreateOCSessionRequest,
+    UpdateOCSessionRequest,
+    SendSessionMessageRequest,
     SkillsCallbackRequest, QuestionReplyRequest
 } from '../../types/oc.js';
 import { RESPONSE_CODES } from '../../types/common.js';
