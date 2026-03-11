@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import type { Response } from '../types/common.js';
+import type { BaseResponse } from '../types/common.js';
 import { RESPONSE_CODES } from '../types/common.js';
 import jwt from 'jsonwebtoken';
 import config from '../config/index.js';
@@ -21,7 +21,7 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     try {
         const authHeader = request.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            const response: Response = {
+            const response: BaseResponse = {
                 code: RESPONSE_CODES.UNAUTHORIZED,
                 data: {
                     message: 'No token provided'
@@ -43,7 +43,7 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
         return; // Success case - continue to handler
 
     } catch (err: any) {
-        const response: Response = {
+        const response: BaseResponse = {
             code: RESPONSE_CODES.UNAUTHORIZED,
             data: {
                 message: err.message || 'Unauthorized'
@@ -56,7 +56,7 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
 // Studio owner authorization middleware
 export async function requireStudioOwner(request: FastifyRequest, reply: FastifyReply) {
     if (!request.user) {
-        const response: Response = {
+        const response: BaseResponse = {
             code: RESPONSE_CODES.UNAUTHORIZED,
             data: {
                 message: 'Authentication required'
@@ -73,7 +73,7 @@ export async function requireStudioOwner(request: FastifyRequest, reply: Fastify
 // Studio member authorization middleware
 export async function requireStudioMember(request: FastifyRequest, reply: FastifyReply) {
     if (!request.user) {
-        const response: Response = {
+        const response: BaseResponse = {
             code: RESPONSE_CODES.UNAUTHORIZED,
             data: {
                 message: 'Authentication required'

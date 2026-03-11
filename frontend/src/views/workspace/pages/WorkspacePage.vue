@@ -113,8 +113,16 @@ const router = useRouter()
 const activeTab = ref<'completed' | 'in-progress'>('completed')
 const viewMode = ref<'list' | 'card'>('list')
 
+const appTypeMap: Record<string, number> = {
+  'web': 1,
+  'ios': 2,
+  'android': 3,
+  'mini-program': 4
+}
+
 const goToSlide1 = (appType: string) => {
-  router.push({ name: 'workspace-slide1', query: { app_type: appType } })
+  const appTypeNum = appTypeMap[appType] || 1
+  router.push({ name: 'workspace-slide1', query: { app_type: appTypeNum } })
 }
 </script>
 

@@ -9,22 +9,7 @@ export type SortInfo = {
   order: 'ASC' | 'DESC' // ASC or DESC
 }
 
-export type Sort = SortInfo // For backward compatibility
-
-export interface Request { }
-
-export interface Error {
-  code: number
-  message: string
-}
-
-export interface Response {
-  code: number
-  message?: string // Add message field
-  data?: any
-}
-
-export type PaginationRequest = Request & {
+export type PaginationRequest = {
   page_info?: {
     page?: number
     size?: number
@@ -37,6 +22,24 @@ export type ListResult<T> = {
   items: T[]
   page_info: PageInfo
 }
+
+// export type Sort = SortInfo // For backward compatibility
+
+export interface BaseRequest { }
+// export type Request = BaseRequest // Backward compatibility alias
+
+// export interface Error {
+//   code: number
+//   message: string
+// }
+
+export interface BaseResponse<T = any> {
+  code: number
+  message?: string // Add message field
+  data?: T
+}
+// export type Response<T = any> = BaseResponse<T> // Backward compatibility alias
+
 
 // Response code constants for business logic results
 export const RESPONSE_CODES = {

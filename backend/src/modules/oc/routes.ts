@@ -39,20 +39,19 @@ export default async function (fastify: FastifyInstance) {
         }
     }, ocHandlers.createOCSession);
 
-    // Update Session
-    fastify.post('/oc/session/update', {
+    // Session Skill Active
+    fastify.post('/oc/session/skill_active', {
         preHandler: [authenticate],
         schema: {
-            description: 'Update OpenCode session parameters',
+            description: 'Activate a skill in OpenCode session',
             tags: ['OpenCode'],
             security: [{ bearerAuth: [] }],
             body: {
                 type: 'object',
-                required: ['session_id'],
+                required: ['session_id', 'skill_type'],
                 properties: {
                     session_id: { type: 'number', description: 'Session ID' },
-                    type: { type: 'number', enum: [0, 1, 2], description: 'Session type' },
-                    app_type: { type: 'number', enum: [0, 1, 2, 3], description: 'Application type (0/web, 1/android, 2/ios, 3/mobile)' },
+                    skill_type: { type: 'number', description: 'Skill type ID' },
                     extra: { type: 'object', description: 'Additional optional parameters' }
                 }
             },
@@ -65,45 +64,32 @@ export default async function (fastify: FastifyInstance) {
                         data: {
                             type: 'object',
                             properties: {
-                                session_id: { type: 'number' },
-                                type: { type: 'number' },
-                                agent_id: { type: 'number' },
-                                items: {
-                                    type: 'array',
-                                    items: {
-                                        type: 'object',
-                                        properties: {
-                                            id: { type: 'string' },
-                                            role: { type: 'string' },
-                                            type: { type: 'string' },
-                                            content: { type: 'string' },
-                                            created: { type: 'string' }
-                                        }
-                                    }
-                                }
+                                skill_id: { type: 'number' },
+                                skill_name: { type: 'string' },
+                                message_type: { type: 'string' },
+                                message_content: {}
                             }
                         }
                     }
                 }
             }
         }
-    }, ocHandlers.updateOCSession);
+    }, ocHandlers.sessionSkillActive);
 
-    // Send Session Message
-    fastify.post('/oc/session/message', {
+    // Session Message Async
+    fastify.post('/oc/session/message/async', {
         preHandler: [authenticate],
         schema: {
-            description: 'Send message to OpenCode session',
+            description: 'Send async message to OpenCode session',
             tags: ['OpenCode'],
             security: [{ bearerAuth: [] }],
             body: {
                 type: 'object',
-                required: ['session_id', 'content'],
+                required: ['session_id', 'message_content'],
                 properties: {
                     session_id: { type: 'number', description: 'Session ID' },
-                    type: { type: 'string', description: 'Message type (e.g., text, image)' },
-                    content: { type: 'string', description: 'Message content' },
-                    extra: { type: 'object', description: 'Additional optional parameters' }
+                    message_type: { type: 'string', enum: ['text', 'part'], description: 'Message type' },
+                    message_content: {},
                 }
             },
             response: {
@@ -111,35 +97,15 @@ export default async function (fastify: FastifyInstance) {
                     type: 'object',
                     properties: {
                         code: { type: 'number' },
-                        message: { type: 'string' },
-                        data: {
-                            type: 'object',
-                            properties: {
-                                session_id: { type: 'number' },
-                                agent_id: { type: 'number' },
-                                items: {
-                                    type: 'array',
-                                    items: {
-                                        type: 'object',
-                                        properties: {
-                                            id: { type: 'string' },
-                                            role: { type: 'string' },
-                                            type: { type: 'string' },
-                                            content: { type: 'string' },
-                                            created: { type: 'string' }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        message: { type: 'string' }
                     }
                 }
             }
         }
-    }, ocHandlers.sendSessionMessage);
+    }, ocHandlers.sessionMessageAsync);
 
-    // Question Reply
-    fastify.post('/oc/session/question_reply', {
+    // Session Message Question
+    fastify.post('/oc/session/tool/question', {
         preHandler: [authenticate],
         schema: {
             description: 'Reply to a question from OpenCode session',
@@ -153,9 +119,9 @@ export default async function (fastify: FastifyInstance) {
                     question_id: { type: 'string', description: 'Question ID' },
                     message_id: { type: 'string', description: 'Message ID' },
                     call_id: { type: 'string', description: 'Call ID' },
-                    result: { type: 'string', enum: ['reply', 'reject'], description: 'Action type: reply or reject, default is reply' },
-                    content: { type: 'string', description: 'User answer content (required when result is reply)' },
-                    extra: { type: 'object', description: 'Additional optional parameters', additionalProperties: true }
+                    result: { type: 'string', enum: ['reply', 'reject'], description: 'Action type: reply or reject' },
+                    message_type: { type: 'string', description: 'Message type' },
+                    message_content: {},
                 }
             },
             response: {
@@ -163,13 +129,12 @@ export default async function (fastify: FastifyInstance) {
                     type: 'object',
                     properties: {
                         code: { type: 'number' },
-                        message: { type: 'string' },
-                        result: { type: 'object', additionalProperties: true }
+                        message: { type: 'string' }
                     }
                 }
             }
         }
-    }, ocHandlers.questionReply);
+    }, ocHandlers.sessionMessageQuestion);
 
     // Skills Callback
     fastify.post('/oc/skills/callback', {
@@ -229,11 +194,11 @@ export default async function (fastify: FastifyInstance) {
         }
     }, ocHandlers.skillsCallback);
 
-    // SSE Stream
+    // SSE Subscribe
     fastify.get('/oc/session/sse', {
         preHandler: [authenticate],
         schema: {
-            description: 'Server-Sent Events stream for real-time updates',
+            description: 'Server-Sent Events stream for real-time session updates',
             tags: ['OpenCode'],
             security: [{ bearerAuth: [] }],
             querystring: {
@@ -244,5 +209,6 @@ export default async function (fastify: FastifyInstance) {
                 }
             }
         }
-    }, ocHandlers.sseStream);
+    }, ocHandlers.sessionSSESubscribe);
 }
+

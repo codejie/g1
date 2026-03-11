@@ -1,42 +1,35 @@
 import api, { BASE_URL } from './api'
 import type {
-  CreateOCSessionRequest,
-  OCSessionResponse,
-  UpdateOCSessionRequest,
-  SendSessionMessageRequest,
-  SessionMessageResponse,
-  SkillsCallbackRequest,
-  SkillsCallbackResponse,
-  QuestionReplyRequest,
-  QuestionReplyResponse,
-  SSERequest
+  SessionCreateRequest,
+  SessionMessageAsyncRequest,
+  SessionSkillActiveRequest,
+  SessionMessageQuestionRequest,
+  SessionSSESubscribeRequest
 } from '../types/oc'
 
 const ocService = {
-  createSession: async (data: CreateOCSessionRequest): Promise<OCSessionResponse> => {
-    return await api.post<OCSessionResponse>('/oc/session/create', data)
+  // Session create
+  createSession: async (data: SessionCreateRequest) => {
+    return await api.post<any>('/oc/session/create', data)
   },
 
-  updateSession: async (data: UpdateOCSessionRequest): Promise<OCSessionResponse> => {
-    return await api.post<OCSessionResponse>('/oc/session/update', data)
+  // Session message async
+  sendSessionMessage: async (data: SessionMessageAsyncRequest) => {
+    return await api.post<any>('/oc/session/message/async', data)
   },
 
-  sendSessionMessage: async (data: SendSessionMessageRequest): Promise<SessionMessageResponse> => {
-    return await api.post<SessionMessageResponse>('/oc/session/message', data)
+  // Session skill active
+  skillActive: async (data: SessionSkillActiveRequest) => {
+    return await api.post<any>('/oc/session/skill_active', data)
   },
 
-  skillsCallback: async (data: SkillsCallbackRequest): Promise<SkillsCallbackResponse> => {
-    return await api.post<SkillsCallbackResponse>('/oc/skills/callback', data)
+  // Session message question
+  questionReply: async (data: SessionMessageQuestionRequest) => {
+    return await api.post<any>('/oc/session/tool/question', data)
   },
 
-  questionReply: async (data: QuestionReplyRequest): Promise<QuestionReplyResponse> => {
-    return await api.post<QuestionReplyResponse>('/oc/session/question_reply', data)
-  },
-
-  getSSEUrl: (params: SSERequest): string => {
-    // BASE_URL is 'http://localhost:3000/api'
-    // Paths in api.post are like '/oc/session/create'
-    // So for SSE we want BASE_URL + '/oc/session/sse'
+  // SSE subscribe
+  getSSEUrl: (params: SessionSSESubscribeRequest): string => {
     const url = new URL(`${BASE_URL}/oc/session/sse`)
     url.searchParams.append('session_id', params.session_id.toString())
     return url.toString()
@@ -44,4 +37,5 @@ const ocService = {
 }
 
 export default ocService
+
 

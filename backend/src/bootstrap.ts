@@ -8,7 +8,7 @@ import multipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import db from './config/database.js';
-import type { Response } from './types/common.js';
+import type { BaseResponse } from './types/common.js';
 import { RESPONSE_CODES } from './types/common.js';
 import config from './config/index.js';
 
@@ -69,7 +69,7 @@ export const bootstrap = async (server: FastifyInstance) => {
         request.log.error(error);
 
         if (error && (error as any).validation) {
-            const response: Response = {
+            const response: BaseResponse = {
                 code: RESPONSE_CODES.VALIDATION_ERROR,
                 message: (error as any).message || 'Validation error',
                 data: undefined
@@ -77,7 +77,7 @@ export const bootstrap = async (server: FastifyInstance) => {
             reply.code(RESPONSE_CODES.HTTP_OK).send(response);
         } else {
             const err = error as any;
-            const response: Response = {
+            const response: BaseResponse = {
                 code: RESPONSE_CODES.INTERNAL_ERROR,
                 message: err?.message || 'Internal Server Error',
                 data: undefined

@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
-import type { Response } from '../types/common' // Import the Response type
+import type { BaseRequest, BaseResponse } from '../types/common' // Import the Response type
 
 export const BASE_URL = 'http://localhost:3000/api'
 
@@ -27,7 +27,7 @@ api.interceptors.response.use(
     }
 
     // Assume all successful responses from backend have a 'code' field
-    const res = response.data as Response
+    const res = response.data as BaseResponse
     if (res.code === 0) {
       // If code is 0, it's a success, return the actual data
       return res.data
@@ -56,11 +56,18 @@ api.interceptors.response.use(
 
 // Typed request wrapper
 const request = {
-  get: <T = any>(url: string, config?: any): Promise<T> => api.get(url, config) as any,
-  post: <T = any>(url: string, data?: any, config?: any): Promise<T> => api.post(url, data, config) as any,
-  put: <T = any>(url: string, data?: any, config?: any): Promise<T> => api.put(url, data, config) as any,
-  delete: <T = any>(url: string, config?: any): Promise<T> => api.delete(url, config) as any,
-  patch: <T = any>(url: string, data?: any, config?: any): Promise<T> => api.patch(url, data, config) as any,
+  get: <T = Response>(url: string, data?: BaseRequest, config?: any): Promise<T> =>
+    api.get(url, {
+      ...config,
+      params: { ...config?.params, ...data }
+    }),
+  // post: <T = any>(url: string, data?: any, config?: any): Promise<T> => api.post(url, data, config) as any,
+
+  post: <T = Response>(url: string, data?: BaseRequest, config?: any): Promise<T> => api.post(url, data, config),
+
+  // put: <T = any>(url: string, data?: any, config?: any): Promise<T> => api.put(url, data, config) as any,
+  // delete: <T = any>(url: string, config?: any): Promise<T> => api.delete(url, config) as any,
+  // patch: <T = any>(url: string, data?: any, config?: any): Promise<T> => api.patch(url, data, config) as any,
 }
 
 export default request

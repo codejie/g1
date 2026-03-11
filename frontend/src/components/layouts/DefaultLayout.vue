@@ -16,15 +16,6 @@
           </select>
 
           <template v-if="authStore.isAuthenticated">
-            <router-link to="/files" class="mr-4 hover:underline">{{
-              $t('files')
-            }}</router-link>
-            <router-link to="/agents" class="mr-4 hover:underline">{{
-              $t('agents')
-            }}</router-link>
-            <router-link to="/profile" class="mr-4 hover:underline">{{
-              $t('profile')
-            }}</router-link>
             <span class="mr-4">{{
               $t('welcome_message', {
                 name: authStore.currentUser?.username || 'User',
@@ -54,10 +45,10 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
-import { useI18n } from 'vue-i18n' // Import useI18n
+import { useI18n } from 'vue-i18n'
 
 const authStore = useAuthStore()
-const { locale } = useI18n() // Access locale reactive reference
+const { locale } = useI18n()
 </script>
 
 <style scoped>

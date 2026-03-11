@@ -1,5 +1,4 @@
 import sqlite3 from 'sqlite3';
-import path from 'path';
 import config from './index.js';
 
 const dbPath = config.DATABASE_PATH;
@@ -21,27 +20,7 @@ class DatabaseWrapper {
     async init(): Promise<void> {
         return new Promise((resolve, reject) => {
             this.db.serialize(() => {
-                // Foreign key constraints disabled
-                // this.db.run('PRAGMA foreign_keys = ON');
-
-                // Create studios table
-                this.db.run(`
-                    CREATE TABLE IF NOT EXISTS studios (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name VARCHAR(100) UNIQUE NOT NULL,
-                        description TEXT,
-                        disabled INTEGER NOT NULL DEFAULT 0,
-                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    )
-                `, (err) => {
-                    if (err) {
-                        console.error('Error creating studios table:', err.message);
-                        return reject(err);
-                    }
-                });
-
-                // Create users table (redesigned)
+                // Create users table
                 this.db.run(`
                     CREATE TABLE IF NOT EXISTS users (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,35 +38,17 @@ class DatabaseWrapper {
                     }
                 });
 
-                // Create user_studios table
-                this.db.run(`
-                    CREATE TABLE IF NOT EXISTS user_studios (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id INTEGER NOT NULL,
-                        studio_id INTEGER NOT NULL,
-                        role VARCHAR(50) NOT NULL,
-                        is_default BOOLEAN NOT NULL DEFAULT 0,
-                        is_owner BOOLEAN NOT NULL DEFAULT 0,
-                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    )
-                `, (err) => {
-                    if (err) {
-                        console.error('Error creating user_studios table:', err.message);
-                        return reject(err);
-                    }
-                });
-
                 // Create user_tokens table
                 this.db.run(`
                     CREATE TABLE IF NOT EXISTS user_tokens (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         user_id INTEGER NOT NULL,
-                        token VARCHAR(255) NOT NULL,
+                        token VARCHAR(255) NOT NULL UNIQUE,
                         expires DATETIME NOT NULL,
                         disabled INTEGER NOT NULL DEFAULT 0,
                         created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(user_id) REFERENCES users(id)
                     )
                 `, (err) => {
                     if (err) {
@@ -96,100 +57,43 @@ class DatabaseWrapper {
                     }
                 });
 
-                // Create oc_sessions table (OpenCode sessions)
+                // Create user_sessions table
                 this.db.run(`
-                    CREATE TABLE IF NOT EXISTS oc_sessions (
+                    CREATE TABLE IF NOT EXISTS user_sessions (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         user_id INTEGER NOT NULL,
-                        session_id VARCHAR(128) UNIQUE NOT NULL,
-                        parent_id VARCHAR(128),
-                        directory VARCHAR(255),
+                        session_id INTEGER NOT NULL,
                         title VARCHAR(255),
-                        type INTEGER NOT NULL DEFAULT 0,
-                        skill_id INTEGER NOT NULL DEFAULT 0,
+                        type INTEGER NOT NULL,
+                        skill_id INTEGER,
                         disabled INTEGER NOT NULL DEFAULT 0,
                         created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(user_id) REFERENCES users(id)
                     )
                 `, (err) => {
                     if (err) {
-                        console.error('Error creating oc_sessions table:', err.message);
+                        console.error('Error creating user_sessions table:', err.message);
                         return reject(err);
                     }
                 });
 
-                // Create oc_messages table (OpenCode session messages)
+                // Create skills table
                 this.db.run(`
-                    CREATE TABLE IF NOT EXISTS oc_messages (
+                    CREATE TABLE IF NOT EXISTS skills (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id INTEGER NOT NULL,
-                        session_id VARCHAR(128) NOT NULL,
-                        message TEXT NOT NULL,
-                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    )
-                `, (err) => {
-                    if (err) {
-                        console.error('Error creating oc_messages table:', err.message);
-                        return reject(err);
-                    }
-                });
-
-                // Create oc_skill_callbacks table (OpenCode skill callbacks)
-                this.db.run(`
-                    CREATE TABLE IF NOT EXISTS oc_skill_callbacks (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        skill_id INTEGER NOT NULL,
-                        session_id VARCHAR(128) NOT NULL,
-                        event VARCHAR(64) NOT NULL,
-                        type VARCHAR(64) NOT NULL,
-                        data TEXT NOT NULL,
-                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    )
-                `, (err) => {
-                    if (err) {
-                        console.error('Error creating oc_skill_callbacks table:', err.message);
-                        return reject(err);
-                    }
-                });
-
-                // Create applications table
-                this.db.run(`
-                    CREATE TABLE IF NOT EXISTS applications (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id INTEGER NOT NULL,
-                        type VARCHAR(50) NOT NULL,
-                        name VARCHAR(100) UNIQUE NOT NULL,
+                        type INTEGER NOT NULL,
+                        name VARCHAR(100) NOT NULL UNIQUE,
+                        version VARCHAR(50) NOT NULL,
                         description TEXT,
-                        icon VARCHAR(255),
-                        status VARCHAR(50) NOT NULL DEFAULT 'processing',
+                        extra_arguments TEXT,
                         disabled INTEGER NOT NULL DEFAULT 0,
                         created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                 `, (err) => {
                     if (err) {
-                        console.error('Error creating applications table:', err.message);
-                        return reject(err);
-                    }
-                });
-
-                // Create app_files table (application files)
-                this.db.run(`
-                    CREATE TABLE IF NOT EXISTS app_files (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id INTEGER NOT NULL,
-                        application_id INTEGER NOT NULL,
-                        name VARCHAR(255) NOT NULL,
-                        path VARCHAR(1024) NOT NULL,
-                        size BIGINT NOT NULL,
-                        type VARCHAR(50) NOT NULL,
-                        disabled INTEGER NOT NULL DEFAULT 0,
-                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    )
-                `, (err) => {
-                    if (err) {
-                        console.error('Error creating app_files table:', err.message);
+                        console.error('Error creating skills table:', err.message);
                         return reject(err);
                     }
                 });

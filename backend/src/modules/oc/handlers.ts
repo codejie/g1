@@ -1,19 +1,22 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import {
-    CreateOCSessionRequest,
-    UpdateOCSessionRequest,
-    SendSessionMessageRequest,
-    SkillsCallbackRequest, QuestionReplyRequest
+    SessionCreateRequest,
+    SessionSSESubscribeRequest,
+    SessionMessageAsyncRequest,
+    SessionSkillActiveRequest,
+    SessionMessageQuestionRequest,
+    SkillsCallbackRequest
 } from '../../types/oc.js';
 import { RESPONSE_CODES } from '../../types/common.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
 import config from '../../config/index.js';
 import { randomUUID } from 'crypto';
-import { OCSessionModel, OCSkillCallbackModel } from './model.js';
+import { UserSessionModel, OCSkillCallbackModel } from './model.js';
 import fsPromises from 'fs/promises';
 import path from 'path';
-import { getSkillById, getSkillParts } from '../../skills/index.js';
+import { getSkillParts } from '../../skills/index.js';
 import { customOCApi } from './custom-api.js';
+import SkillModel from '../skills/model.js';
 
 const MESSAGE_DATA_DIR = path.join(process.cwd(), 'data', 'session_messages');
 
@@ -21,7 +24,7 @@ const MESSAGE_DATA_DIR = path.join(process.cwd(), 'data', 'session_messages');
 const sseConnections = new Map<number, FastifyReply>();
 
 // Create OC Session handler
-export const createOCSession = async (request: FastifyRequest<{ Body: CreateOCSessionRequest }>, reply: FastifyReply) => {
+export const createOCSession = async (request: FastifyRequest<{ Body: SessionCreateRequest }>, reply: FastifyReply) => {
     if (!request.user) {
         return sendError(reply, RESPONSE_CODES.UNAUTHORIZED, 'Authentication required');
     }
@@ -33,20 +36,18 @@ export const createOCSession = async (request: FastifyRequest<{ Body: CreateOCSe
         const openCodeSession = await customOCApi.session.create(title || 'New Session');
 
         // Save session to database
-        const session = await OCSessionModel.create({
+        const session = await UserSessionModel.create({
             user_id: userId,
             session_id: openCodeSession.id,
-            parent_id: extra?.parent_id || null,
-            directory: extra?.directory || null,
-            title: title || openCodeSession.title || null,
+            title: title || openCodeSession.title || undefined,
             type: type || 0,
-            skill_id: 0,
+            skill_id: undefined,
             disabled: 0
         });
 
         return sendSuccess(reply, {
-            session_id: session.id,
-            type: session.type,
+            id: session.id,
+            type: session.type as any,
             title: session.title || '',
             skill_id: session.skill_id
         });
@@ -55,18 +56,18 @@ export const createOCSession = async (request: FastifyRequest<{ Body: CreateOCSe
     }
 };
 
-// Update OC Session handler
-export const updateOCSession = async (request: FastifyRequest<{ Body: UpdateOCSessionRequest }>, reply: FastifyReply) => {
+// Session Skill Active handler
+export const sessionSkillActive = async (request: FastifyRequest<{ Body: SessionSkillActiveRequest }>, reply: FastifyReply) => {
     if (!request.user) {
         return sendError(reply, RESPONSE_CODES.UNAUTHORIZED, 'Authentication required');
     }
 
     const userId = (request.user as any).id;
-    const { session_id, type, app_type, extra } = request.body;
+    const { session_id, skill_type, extra } = request.body;
 
     try {
         // Find the session in database
-        const session = await OCSessionModel.findByLocalId(session_id);
+        const session = await UserSessionModel.findById(session_id);
         if (!session) {
             return sendError(reply, RESPONSE_CODES.NOT_FOUND, 'Session not found');
         }
@@ -76,42 +77,46 @@ export const updateOCSession = async (request: FastifyRequest<{ Body: UpdateOCSe
             return sendError(reply, RESPONSE_CODES.FORBIDDEN, 'Not authorized to update this session');
         }
 
-
-        let items: any[] = [];
-        // Get app_test skill and send command
-        const skill = getSkillById(10);
-        if (skill) {
-            await customOCApi.session.promptAsync({
-                sessionId: session.session_id,
-                providerID: skill.provider || config.LLM_PROVIDER,
-                modelID: skill.model || config.LLM_MODEL,
-                text: `执行${skill.name}，skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}。${skill.extra_arguments || ''}`
-            });
-            return sendSuccess(reply, {
-                session_id: session_id,
-                skill_id: skill.id,
-                items: items.length > 0 ? items : undefined
-            });
-        } else {
+        // Get skill by type from database
+        const skills = await SkillModel.findByType(skill_type);
+        if (!skills || skills.length === 0) {
             return sendError(reply, RESPONSE_CODES.NOT_FOUND, 'Skill not found');
         }
+
+        // Use the first skill with matching type
+        const skill = skills[0];
+
+        // Send command to OpenCode API
+        await customOCApi.session.promptAsync({
+            sessionId: session.session_id,
+            providerID: config.LLM_PROVIDER,
+            modelID: config.LLM_MODEL,
+            text: `执行${skill.name}，skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}。${skill.extra_arguments || ''}`
+        });
+
+        return sendSuccess(reply, {
+            skill_id: skill.id,
+            skill_name: skill.name,
+            message_type: extra?.message_type,
+            message_content: extra?.message_content
+        });
     } catch (error: any) {
-        return sendError(reply, RESPONSE_CODES.INTERNAL_ERROR, error?.message || 'Failed to update session');
+        return sendError(reply, RESPONSE_CODES.INTERNAL_ERROR, error?.message || 'Failed to activate skill');
     }
 };
 
-// Send Session Message handler
-export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSessionMessageRequest }>, reply: FastifyReply) => {
+// Session Message Async handler
+export const sessionMessageAsync = async (request: FastifyRequest<{ Body: SessionMessageAsyncRequest }>, reply: FastifyReply) => {
     if (!request.user) {
         return sendError(reply, RESPONSE_CODES.UNAUTHORIZED, 'Authentication required');
     }
 
     const userId = (request.user as any).id;
-    const { session_id, type, content, extra } = request.body;
+    const { session_id, message_type, message_content } = request.body;
 
     try {
         // Find the session in database
-        const session = await OCSessionModel.findByLocalId(session_id);
+        const session = await UserSessionModel.findById(session_id);
         if (!session) {
             return sendError(reply, RESPONSE_CODES.NOT_FOUND, 'Session not found');
         }
@@ -125,16 +130,16 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
         const userMessage = {
             id: randomUUID(),
             role: 'user',
-            type: type || 'text',
-            content: content,
+            type: message_type || 'text',
+            content: message_content,
             created: new Date().toISOString()
         };
 
         await customOCApi.session.promptAsync({
             sessionId: session.session_id,
-            providerID: extra?.provider_id || config.LLM_PROVIDER,
-            modelID: extra?.model_id || config.LLM_MODEL,
-            text: content
+            providerID: config.LLM_PROVIDER,
+            modelID: config.LLM_MODEL,
+            text: message_content
         });
 
         const items: any[] = []; // No synchronous items available with promptAsync
@@ -166,31 +171,27 @@ export const sendSessionMessage = async (request: FastifyRequest<{ Body: SendSes
             console.error('Failed to store message to file:', fileError);
         }
 
-        return sendSuccess(reply, {
-            session_id: session.id,
-            skill_id: session.skill_id,
-            items: items
-        });
+        return sendSuccess(reply, {});
     } catch (error: any) {
         return sendError(reply, RESPONSE_CODES.INTERNAL_ERROR, error?.message || 'Failed to send message');
     }
 };
 
-// Question Reply handler
-export const questionReply = async (request: FastifyRequest<{ Body: QuestionReplyRequest }>, reply: FastifyReply) => {
+// Session Message Question handler
+export const sessionMessageQuestion = async (request: FastifyRequest<{ Body: SessionMessageQuestionRequest }>, reply: FastifyReply) => {
     if (!request.user) {
         return sendError(reply, RESPONSE_CODES.UNAUTHORIZED, 'Authentication required');
     }
 
     const userId = (request.user as any).id;
-    const { session_id, question_id, message_id, call_id, result, content, extra } = request.body;
+    const { session_id, question_id, message_id, call_id, result, message_type, message_content } = request.body;
 
     try {
         if (!session_id || !question_id) {
             return sendError(reply, RESPONSE_CODES.INVALID_REQUEST, 'Missing required fields');
         }
 
-        const session = await OCSessionModel.findByLocalId(session_id);
+        const session = await UserSessionModel.findById(session_id);
         if (!session) {
             return sendError(reply, RESPONSE_CODES.NOT_FOUND, 'Session not found');
         }
@@ -205,27 +206,19 @@ export const questionReply = async (request: FastifyRequest<{ Body: QuestionRepl
                 requestID: question_id
             });
 
-            return sendSuccess(reply, {
-                code: 0,
-                message: 'Question rejected successfully',
-                result: null
-            });
+            return sendSuccess(reply, {});
         } else {
             // Default: reply to the question
-            if (!content) {
+            if (!message_content) {
                 return sendError(reply, RESPONSE_CODES.INVALID_REQUEST, 'Content is required for reply');
             }
 
             await customOCApi.question.reply({
                 requestID: question_id,
-                answers: [[content]]
+                answers: [[message_content]]
             });
 
-            return sendSuccess(reply, {
-                code: 0,
-                message: 'Question replied successfully',
-                result: null
-            });
+            return sendSuccess(reply, {});
         }
     } catch (error: any) {
         return sendError(reply, RESPONSE_CODES.INTERNAL_ERROR, error?.message || 'Failed to reply question');
@@ -243,7 +236,7 @@ export const skillsCallback = async (request: FastifyRequest<{ Body: SkillsCallb
         }
 
         // Find the session to get the local session_id (session_id from OpenCode is a string)
-        const session = await OCSessionModel.findBySessionId(session_id);
+        const session = await UserSessionModel.findBySessionId(session_id);
         if (!session) {
             return sendError(reply, RESPONSE_CODES.NOT_FOUND, 'Session not found');
         }
@@ -258,10 +251,18 @@ export const skillsCallback = async (request: FastifyRequest<{ Body: SkillsCallb
         });
 
         // Notify client via SSE using the local session_id
+        let skillName = 'unknown';
+        if (skill_id) {
+            const skill = await SkillModel.findById(Number(skill_id));
+            if (skill) skillName = skill.name;
+        } else if (session.skill_id) {
+            const skill = await SkillModel.findById(session.skill_id);
+            if (skill) skillName = skill.name;
+        }
         const sent = sendSSEMessage(session.id, event, {
             session_id: session.id,
             skill_id: skill_id || session.skill_id,
-            skill_name: (skill_id && getSkillById(Number(skill_id))?.name) || (session.skill_id && getSkillById(session.skill_id)?.name) || 'unknown',
+            skill_name: skillName,
             type,
             data
         });
@@ -314,7 +315,7 @@ customOCApi.init(async (event) => {
             openCodeSessionId = event.properties?.sessionID;
         }
         if (openCodeSessionId) {
-            const session = await OCSessionModel.findBySessionId(openCodeSessionId);
+            const session = await UserSessionModel.findBySessionId(openCodeSessionId);
             if (session) {
                 sendSSEMessage(session.id, 'oc_session_message', event);
             }
@@ -322,7 +323,7 @@ customOCApi.init(async (event) => {
     } else if (eventType.startsWith('question.')) {
         const openCodeSession = event.properties?.sessionID;
         if (openCodeSession) {
-            const session = await OCSessionModel.findBySessionId(openCodeSession);
+            const session = await UserSessionModel.findBySessionId(openCodeSession);
             if (session) {
                 sendSSEMessage(session.id, 'oc_session_message_question', event);
             }
@@ -334,19 +335,18 @@ customOCApi.init(async (event) => {
     }
 });
 
-// SSE handler
-export const sseStream = async (request: FastifyRequest<{ Querystring: { session_id: number; skill_id?: number; skill_name?: string } }>, reply: FastifyReply) => {
+// Session SSE Subscribe handler
+export const sessionSSESubscribe = async (request: FastifyRequest<{ Querystring: SessionSSESubscribeRequest }>, reply: FastifyReply) => {
     if (!request.user) {
         return sendError(reply, RESPONSE_CODES.UNAUTHORIZED, 'Authentication required');
     }
 
     const userId = (request.user as any).id;
     const { session_id } = request.query;
-    // skill_id and skill_name removed from query params, use session defaults or unknown
 
     try {
         // Find the session in database to verify ownership
-        const session = await OCSessionModel.findByLocalId(session_id);
+        const session = await UserSessionModel.findById(session_id);
         if (!session) {
             return sendError(reply, RESPONSE_CODES.NOT_FOUND, 'Session not found');
         }
@@ -366,7 +366,6 @@ export const sseStream = async (request: FastifyRequest<{ Querystring: { session
         });
 
         // Send initial connection event
-        // reply.raw.write(`event: connected\ndata: ${JSON.stringify({ session_id, skill_id: session.skill_id })}\n\n`);
         const payload = {
             event: 'connected'
         }
@@ -374,10 +373,15 @@ export const sseStream = async (request: FastifyRequest<{ Querystring: { session
 
         // Store SSE connection info
         const effectiveSkillId = session.skill_id;
+        let skillName = 'unknown';
+        if (effectiveSkillId) {
+            const skill = await SkillModel.findById(effectiveSkillId);
+            if (skill) skillName = skill.name;
+        }
         const sseConnection = {
             session_id,
             skill_id: effectiveSkillId,
-            skill_name: getSkillById(effectiveSkillId)?.name,
+            skill_name: skillName,
             user_id: userId,
             connected_at: new Date().toISOString()
         };
@@ -394,7 +398,6 @@ export const sseStream = async (request: FastifyRequest<{ Querystring: { session
                 const payload = {
                     event: 'server.heartbeat'
                 }
-                // reply.raw.write(`:heartbeat\n\n`);
                 reply.raw.write(JSON.stringify(payload) + '\n\n');
             } catch {
                 clearInterval(heartbeatInterval);

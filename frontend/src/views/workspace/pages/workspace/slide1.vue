@@ -123,7 +123,7 @@ const router = useRouter()
 const { t } = useI18n()
 const authStore = useAuthStore()
 
-const appType = ref('')
+const appType = ref<number>(0)
 const isPanelOpen = ref(true)
 const sessionId = ref<number | null>(null)
 const isInitializing = ref(true)
@@ -155,33 +155,33 @@ const clearSseMessages = () => {
 }
 
 onMounted(async () => {
-  if (typeof route.query.app_type === 'string') {
-    appType.value = route.query.app_type
+  const queryAppType = route.query.app_type
+  let appTypeNum = 0
+  if (queryAppType) {
+    if (typeof queryAppType === 'string') {
+      appTypeNum = parseInt(queryAppType) || 0
+    } else if (typeof queryAppType === 'number') {
+      appTypeNum = queryAppType
+    }
   }
+  appType.value = isNaN(appTypeNum) ? 0 : appTypeNum
 
   try {
     isInitializing.value = true
-    const session = await ocService.createSession({ 
+    const session = await ocService.createSession({
       type: 1,
       title: 'Coding Session'
     })
-    sessionId.value = session.session_id
+    sessionId.value = session?.id
 
-    await initSSE(session.session_id)
+    await initSSE(session?.id)
 
-    const appTypeValue = parseInt(appType.value)
-    const updateResponse = await ocService.updateSession({
-      session_id: session.session_id,
-      app_type: isNaN(appTypeValue) ? 0 : (appTypeValue as any)
+    const updateResponse = await ocService.skillActive({
+      session_id: session?.id,
+      skill_type: appType.value
     })
-    
-    if (updateResponse.items && updateResponse.items.length > 0) {
-      const aiResponseText = updateResponse.items
-        .map((item: any) => `${item.type || '<>'}: ${item.content || '[]'}`)
-        .join('\n')
-      
-      chatPanelRef.value?.addMessage('ai', aiResponseText)
-    }
+
+    // No items in response for skillActive, response is empty
   } catch (error) {
     console.error('Failed to initialize OC session:', error)
   } finally {
@@ -285,17 +285,11 @@ const handleChatSend = async (message: string) => {
     try {
       const response = await ocService.sendSessionMessage({
         session_id: sessionId.value,
-        type: 'text',
-        content: message,
+        message_type: 'text',
+        message_content: message
       })
 
-      if (response.items && response.items.length > 0) {
-        const aiResponseText = response.items
-          .map((item: any) => `${item.type || '<>'}: ${item.content || '[]'}`)
-          .join('\n')
-
-        chatPanelRef.value?.addMessage('ai', aiResponseText)
-      }
+      // SessionMessageAsyncResponse returns empty data
     } catch (error) {
       console.error('Failed to send message:', error)
       chatPanelRef.value?.addMessage('ai', 'Error: Failed to get response from AI.')
@@ -307,33 +301,28 @@ const handleChatSend = async (message: string) => {
  * Handles question reply from ChatPanel
  */
 const handleQuestionReply = async (message: string, data: any) => {
-  console.log('handleQuestionReply', message, data);
+  console.log('handleQuestionReply', message, data)
   if (sessionId.value !== null) {
     try {
-      console.log('handleQuestionReply', message, data);
+      console.log('handleQuestionReply', message, data)
       const response = await ocService.questionReply({
         session_id: sessionId.value,
         question_id: data?.properties?.id || '',
-        message_id: data?.properties?.message_id || '',
-        call_id: data?.properties?.call_id || '',
+        message_id: data?.properties?.message_id,
+        call_id: data?.properties?.call_id,
         result: 'reply',
-        content: message,
-        extra: {
-          // original_question: data
-        }
+        message_type: 'text',
+        message_content: message
       })
 
       // We can also add a system message if needed, or rely on SSE state updates
-      console.log('handleQuestionReply response:', response);
-      // if (response.code === 0) {
-      //   // success
-      // }
+      console.log('handleQuestionReply response:', response)
     } catch (error) {
       console.error('Failed to reply question:', error)
       chatPanelRef.value?.addMessage('ai', 'Error: Failed to send question reply.')
     }
   } else {
-    console.error('Session not found');
+    console.error('Session not found')
   }
 }
 </script>
