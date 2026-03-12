@@ -117,6 +117,26 @@ class DatabaseWrapper {
                     }
                 });
 
+                // Create files table
+                this.db.run(`
+                    CREATE TABLE IF NOT EXISTS files (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        type VARCHAR(50) NOT NULL,
+                        path VARCHAR(255) NOT NULL,
+                        name VARCHAR(255) NOT NULL,
+                        status INTEGER NOT NULL DEFAULT 0,
+                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(user_id) REFERENCES users(id)
+                    )
+                `, (err) => {
+                    if (err) {
+                        console.error('Error creating files table:', err.message);
+                        return reject(err);
+                    }
+                });
+
                 console.log('Database tables initialized successfully');
                 resolve();
             });
