@@ -5,9 +5,9 @@ export type SessionType = 0 | 1 | 2; // 0/general, 1/coding, 2/debugging
 export type MessageType = 'text' | 'part';
 export type QuestionResult = 'reply' | 'reject';
 export type SkillsCallbackEvent = 'result_with_file';
-export type SkillsCallbackType = 'file';
+export type SkillsCallbackType = 'file' | 'unknown';
 // data structures
-export type UserSession = {
+export type UserSessionModelType = {
     id?: number; // local session
     user_id: number;
     session_id: number; // oc session
@@ -17,6 +17,16 @@ export type UserSession = {
     disabled: number; // 0/1, default 0
     created: Date;
     updated: Date;
+}
+
+export type SkillsCallbackModelType = {
+    id?: number; // record id
+    skill_id: number;
+    session_id: string; // oc session
+    event: SkillsCallbackEvent;
+    type?: SkillsCallbackType;
+    data?: any;
+    created: Date;
 }
 
 // Session create

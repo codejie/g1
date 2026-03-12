@@ -11,7 +11,7 @@ import { RESPONSE_CODES } from '../../types/common.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
 import config from '../../config/index.js';
 import { randomUUID } from 'crypto';
-import { UserSessionModel, OCSkillCallbackModel } from './model.js';
+import { UserSessionModel, SkillsCallbackModel } from './model.js';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { getSkillParts } from '../../skills/index.js';
@@ -242,8 +242,8 @@ export const skillsCallback = async (request: FastifyRequest<{ Body: SkillsCallb
         }
 
         // Save callback to database
-        await OCSkillCallbackModel.create({
-            skill_id: skill_id ? Number(skill_id) : 0,
+        await SkillsCallbackModel.create({
+            skill_id: skill_id,
             session_id: session_id,
             event: event,
             type: type || 'unknown',
@@ -253,15 +253,12 @@ export const skillsCallback = async (request: FastifyRequest<{ Body: SkillsCallb
         // Notify client via SSE using the local session_id
         let skillName = 'unknown';
         if (skill_id) {
-            const skill = await SkillModel.findById(Number(skill_id));
-            if (skill) skillName = skill.name;
-        } else if (session.skill_id) {
-            const skill = await SkillModel.findById(session.skill_id);
+            const skill = await SkillModel.findById(skill_id);
             if (skill) skillName = skill.name;
         }
         const sent = sendSSEMessage(session.id, event, {
             session_id: session.id,
-            skill_id: skill_id || session.skill_id,
+            skill_id: skill_id,
             skill_name: skillName,
             type,
             data
