@@ -23,21 +23,64 @@
 
     <!-- Main Content -->
     <div class="flex-1 p-6 bg-gray-50 overflow-y-auto">
-      <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md p-8 border border-gray-100">
-        <h2 class="text-xl font-bold mb-4 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          文件详情
-        </h2>
-        <div class="space-y-4">
-          <div class="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-            <div class="text-sm font-medium text-gray-500">文件名</div>
-            <div class="col-span-2 text-sm text-gray-900">{{ name || 'N/A' }}</div>
+      <div class="max-w-4xl mx-auto space-y-6">
+        <!-- Original File Info -->
+        <div class="bg-white rounded-xl shadow-md p-8 border border-gray-100">
+          <h2 class="text-xl font-bold mb-4 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            文件详情
+          </h2>
+          <div class="space-y-4">
+            <div class="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div class="text-sm font-medium text-gray-500">文件名</div>
+              <div class="col-span-2 text-sm text-gray-900">{{ name || 'N/A' }}</div>
+            </div>
+            <div class="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div class="text-sm font-medium text-gray-500">文件路径</div>
+              <div class="col-span-2 text-sm text-gray-900 break-all">{{ path || 'N/A' }}</div>
+            </div>
           </div>
-          <div class="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-            <div class="text-sm font-medium text-gray-500">文件路径</div>
-            <div class="col-span-2 text-sm text-gray-900 break-all">{{ path || 'N/A' }}</div>
+        </div>
+
+        <!-- Test Section -->
+        <div class="bg-white rounded-xl shadow-md p-8 border border-gray-100">
+          <h2 class="text-xl font-bold mb-4 flex items-center text-red-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            </svg>
+            验证接口调用 (Temporary Test)
+          </h2>
+          <div class="space-y-4">
+            <div class="flex items-center space-x-4">
+              <label class="text-sm font-medium text-gray-700">File ID:</label>
+              <input
+                v-model.number="testFileId"
+                type="number"
+                class="flex-1 px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                placeholder="输入文件 ID"
+              />
+            </div>
+            <div class="flex space-x-4">
+              <button
+                @click="handleGetInfo"
+                class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition"
+              >
+                Get File Info
+              </button>
+              <button
+                @click="handleDownload"
+                class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 transition"
+              >
+                Download File
+              </button>
+            </div>
+            <!-- Info Result -->
+            <div v-if="infoResult" class="mt-4 p-4 bg-gray-100 rounded-lg overflow-x-auto">
+              <h3 class="text-sm font-bold mb-2">Info Result:</h3>
+              <pre class="text-xs text-gray-800">{{ JSON.stringify(infoResult, null, 2) }}</pre>
+            </div>
           </div>
         </div>
       </div>
@@ -49,6 +92,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import filesService from '@/services/files'
 
 const route = useRoute()
 const router = useRouter()
@@ -56,6 +100,9 @@ const { t } = useI18n()
 
 const name = ref('')
 const path = ref('')
+
+const testFileId = ref<number>(0)
+const infoResult = ref<any>(null)
 
 onMounted(() => {
   if (typeof route.query.name === 'string') {
@@ -68,6 +115,28 @@ onMounted(() => {
 
 const goBack = () => {
   router.back()
+}
+
+const handleGetInfo = async () => {
+  if (!testFileId.value) return alert('请输入有效的文件 ID')
+  try {
+    infoResult.value = await filesService.getFileInfo({ id: testFileId.value })
+  } catch (error) {
+    console.error('getFileInfo failed:', error)
+    alert('获取信息失败')
+  }
+}
+
+const handleDownload = async () => {
+  if (!testFileId.value) return alert('请输入有效的文件 ID')
+  try {
+    // Attempt to download and save. Filename will be fetched from current info if available or default
+    const filename = infoResult.value?.name || 'downloaded-file'
+    await filesService.downloadAndSave({ id: testFileId.value }, filename)
+  } catch (error) {
+    console.error('download failed:', error)
+    alert('下载失败')
+  }
 }
 </script>
 

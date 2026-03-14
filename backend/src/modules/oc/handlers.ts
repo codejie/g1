@@ -11,12 +11,13 @@ import { RESPONSE_CODES } from '../../types/common.js';
 import { sendSuccess, sendError } from '../../utils/response.js';
 import config from '../../config/index.js';
 import { randomUUID } from 'crypto';
-import { UserSessionModel, SkillsCallbackModel } from './model.js';
+import { UserSessionModel } from './model.js';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { getSkillParts } from '../../skills/index.js';
 import { customOCApi } from './custom-api.js';
 import SkillModel from '../skills/model.js';
+import { handleSkillsCallback } from './skills-callback-handler.js';
 
 const MESSAGE_DATA_DIR = path.join(process.cwd(), 'data', 'session_messages');
 
@@ -227,49 +228,33 @@ export const sessionMessageQuestion = async (request: FastifyRequest<{ Body: Ses
 
 // Skills Callback handler
 export const skillsCallback = async (request: FastifyRequest<{ Body: SkillsCallbackRequest }>, reply: FastifyReply) => {
-    const { session_id, skill_id, event, type, data } = request.body;
+    const { session_id, skill_id, event, data } = request.body;
 
     try {
-        // Validate required fields
         if (!session_id || !event) {
             return sendError(reply, RESPONSE_CODES.INVALID_REQUEST, 'Missing required fields');
         }
 
-        // Find the session to get the local session_id (session_id from OpenCode is a string)
         const session = await UserSessionModel.findBySessionId(session_id);
-        if (!session) {
-            return sendError(reply, RESPONSE_CODES.NOT_FOUND, 'Session not found');
-        }
+        if (session) {
+            await handleSkillsCallback(session.user_id, skill_id, session.id, event, data);
 
-        // Save callback to database
-        await SkillsCallbackModel.create({
-            skill_id: skill_id,
-            session_id: session_id,
-            event: event,
-            type: type || 'unknown',
-            data: data
-        });
-
-        // Notify client via SSE using the local session_id
-        let skillName = 'unknown';
-        if (skill_id) {
-            const skill = await SkillModel.findById(skill_id);
-            if (skill) skillName = skill.name;
+            let skillName = 'unknown';
+            if (skill_id) {
+                const skill = await SkillModel.findById(skill_id);
+                if (skill) skillName = skill.name;
+            }
+            sendSSEMessage(session.id, event, {
+                session_id: session.id,
+                skill_id: skill_id,
+                skill_name: skillName,
+                data
+            });
         }
-        const sent = sendSSEMessage(session.id, event, {
-            session_id: session.id,
-            skill_id: skill_id,
-            skill_name: skillName,
-            type,
-            data
-        });
 
         return sendSuccess(reply, {
             code: 0,
-            message: 'Callback received successfully',
-            result: {
-                sse_sent: sent
-            }
+            message: 'Callback received successfully'
         });
     } catch (error: any) {
         return sendError(reply, RESPONSE_CODES.INTERNAL_ERROR, error?.message || 'Failed to process callback');

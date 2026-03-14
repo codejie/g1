@@ -6,28 +6,6 @@ export type MessageType = 'text' | 'part';
 export type QuestionResult = 'reply' | 'reject';
 export type SkillsCallbackEvent = 'result_with_file';
 export type SkillsCallbackType = 'file' | 'unknown';
-// data structures
-export type UserSessionModelType = {
-    id?: number; // local session
-    user_id: number;
-    session_id: number; // oc session
-    title?: string;
-    type: SessionType;
-    skill_id?: number;
-    disabled: number; // 0/1, default 0
-    created: Date;
-    updated: Date;
-}
-
-export type SkillsCallbackModelType = {
-    id?: number; // record id
-    skill_id: number;
-    session_id: string; // oc session
-    event: SkillsCallbackEvent;
-    type?: SkillsCallbackType;
-    data?: any;
-    created: Date;
-}
 
 // Session create
 // method: POST
@@ -111,6 +89,7 @@ export interface SessionMessageQuestionResponse extends BaseResponse { }
 
 // Skills Callback
 export interface SkillsCallbackRequest extends BaseRequest {
+    user_id: number;
     skill_id: number;
     session_id: string; // oc session id
     event: SkillsCallbackEvent; // event type
