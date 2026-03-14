@@ -9,7 +9,7 @@ export async function handlePrdReportCallback(
 ): Promise<void> {
     console.log('[SkillsCallback] Handling prd_report event:', { user_id, skill_id, session_id, data });
 
-    const appId = data?.app_id;
+    const appId = data?.app_id ?? 1;
     const result = data?.result ?? 0;
     const message = data?.message;
 
@@ -72,6 +72,7 @@ export async function handleSkillsCallback(
 ): Promise<void> {
     switch (event) {
         case 'prd_report':
+        case 'result_with_file':
             await handlePrdReportCallback(user_id, skill_id, session_id, data);
             break;
         case 'app_report':
