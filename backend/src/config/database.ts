@@ -119,23 +119,23 @@ class DatabaseWrapper {
                 });
 
                 // Create skills_callback table
-                this.db.run(`
-                    CREATE TABLE IF NOT EXISTS skills_callback (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        skill_id INTEGER NOT NULL,
-                        session_id VARCHAR(255) NOT NULL,
-                        event VARCHAR(100) NOT NULL,
-                        type VARCHAR(50) NOT NULL,
-                        data TEXT,
-                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY(skill_id) REFERENCES skills(id)
-                    )
-                `, (err) => {
-                    if (err) {
-                        console.error('Error creating skills_callback table:', err.message);
-                        return reject(err);
-                    }
-                });
+                // this.db.run(`
+                //     CREATE TABLE IF NOT EXISTS skills_callback (
+                //         id INTEGER PRIMARY KEY AUTOINCREMENT,
+                //         skill_id INTEGER NOT NULL,
+                //         session_id VARCHAR(255) NOT NULL,
+                //         event VARCHAR(100) NOT NULL,
+                //         type VARCHAR(50) NOT NULL,
+                //         data TEXT,
+                //         created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                //         FOREIGN KEY(skill_id) REFERENCES skills(id)
+                //     )
+                // `, (err) => {
+                //     if (err) {
+                //         console.error('Error creating skills_callback table:', err.message);
+                //         return reject(err);
+                //     }
+                // });
 
                 // Create files table
                 this.db.run(`

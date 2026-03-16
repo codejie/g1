@@ -1,14 +1,15 @@
 import type { BaseRequest, BaseResponse } from './common.js';
 
 export type AppsModelType = {
-    id?: number, // app id
-    user_id: number,
-    app_type: number, // default 0
-    name: string,
-    description?: string,
-    disabled: number,
-    created: Date,
-    updated: Date
+    id?: number; // app id
+    user_id: number;
+    app_type: number; // default 0
+    name: string;
+    version?: string;
+    description?: string;
+    disabled: number;
+    created: Date;
+    updated: Date;
 }
 
 // App's Product Requirements Document Report
@@ -24,6 +25,17 @@ export type AppsPrdReportModelType = {
     updated: Date;
 }
 
+// SSE Event Type of Apps Product Requirements Document Report
+export type AppPrdReportSSEType = {
+    result: number;
+    message?: string;
+    app_id: number;
+    type?: string; // directory, md, pdf..
+    path?: string;
+    name?: string;
+    file_id?: number;
+}
+
 // App's Project Source Report
 export type AppsProjectReportModelType = {
 
@@ -31,7 +43,7 @@ export type AppsProjectReportModelType = {
 
 // App's Release Package Report
 export type AppsReleaseReportModelType = {
-    
+
 }
 
 // get app info
@@ -41,13 +53,13 @@ export interface GetInfoRequest extends BaseRequest {
     id: number;
 }
 
-export interface GetAppResponse extends BaseResponse<AppsModelType> {}
+export interface GetAppResponse extends BaseResponse<AppsModelType> { }
 
 // get prd report info
 // method: POST
-// path: /apps/prd_report/info
+// path: /apps/app_prd_report/info
 export interface GetPrdReportInfoRequest extends BaseRequest {
     id: number;
 }
 
-export interface GetPrdReportInfoResponse extends BaseResponse<AppsPrdReportModelType> {}
+export interface GetPrdReportInfoResponse extends BaseResponse<AppsPrdReportModelType> { }

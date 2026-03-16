@@ -98,6 +98,14 @@
                   :name="msg.data?.data.name || 'Unknown'"
                   :path="msg.data?.data.path || ''"
                 />
+                <AppPrdReport
+                  v-if="msg.event === 'app_prd_report'"
+                  :result="msg.data?.data?.result ?? 0"
+                  :message="msg.data?.data?.message"
+                  :name="msg.data?.data?.name"
+                  :app_id="msg.data?.data?.app_id"
+                  :file_id="msg.data?.data?.file_id"
+                />
                 <div class="text-xs text-gray-400 mt-2">{{ msg.timestamp }}</div>
               </div>
             </div>
@@ -115,6 +123,7 @@ import { useI18n } from 'vue-i18n'
 import ocService from '@/services/oc'
 import { useAuthStore } from '@/stores/auth'
 import ResultWithFile from '@/views/workspace/components/ResultWithFile.vue'
+import AppPrdReport from '@/views/workspace/components/AppPrdReport.vue'
 import ChatPanel from '@/views/workspace/components/ChatPanel.vue'
 import { formatData, formatTime } from '@/views/workspace/utils'
 
@@ -178,7 +187,10 @@ onMounted(async () => {
 
     const updateResponse = await ocService.skillActive({
       session_id: session?.id,
-      skill_type: appType.value
+      skill_type: appType.value,
+      extra: {
+        app_id: 1
+      }
     })
 
     // No items in response for skillActive, response is empty

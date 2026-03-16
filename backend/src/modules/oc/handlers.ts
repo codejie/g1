@@ -57,6 +57,13 @@ export const createOCSession = async (request: FastifyRequest<{ Body: SessionCre
     }
 };
 
+function interpolate(str: string, params: object): string {
+  return str.replace(/\${([^}]+)}/g, (_, key) => {
+    // 处理嵌套路径，例如 'extra.app_id' -> data['extra']['app_id']
+    return key.split('.').reduce((obj: any, i: string) => obj?.[i], params) ?? '';
+  });
+}
+
 // Session Skill Active handler
 export const sessionSkillActive = async (request: FastifyRequest<{ Body: SessionSkillActiveRequest }>, reply: FastifyReply) => {
     if (!request.user) {
@@ -72,7 +79,6 @@ export const sessionSkillActive = async (request: FastifyRequest<{ Body: Session
         if (!session) {
             return sendError(reply, RESPONSE_CODES.NOT_FOUND, 'Session not found');
         }
-
         // Verify ownership
         if (session.user_id !== userId) {
             return sendError(reply, RESPONSE_CODES.FORBIDDEN, 'Not authorized to update this session');
@@ -86,13 +92,21 @@ export const sessionSkillActive = async (request: FastifyRequest<{ Body: Session
 
         // Use the first skill with matching type
         const skill = skills[0];
+        
+        const result = interpolate(skill.extra_arguments, {
+            ...request.body,            
+            oc_session: session.session_id,
+            user_id: userId
+        });
 
+        const text = `执行${skill.name}，${result}`
         // Send command to OpenCode API
         await customOCApi.session.promptAsync({
             sessionId: session.session_id,
             providerID: config.LLM_PROVIDER,
             modelID: config.LLM_MODEL,
-            text: `执行${skill.name}，skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}。${skill.extra_arguments || ''}`
+            // text: `执行${skill.name}，skill所需重要配置数据为:{'user_id':${userId}, 'session_id':'${session.session_id}'}。${skill.extra_arguments || ''}`
+            text: text //`执行${skill.name}，${processedArguments}。`
         });
 
         return sendSuccess(reply, {
@@ -237,7 +251,7 @@ export const skillsCallback = async (request: FastifyRequest<{ Body: SkillsCallb
 
         const session = await UserSessionModel.findBySessionId(session_id);
         if (session) {
-            await handleSkillsCallback(session.user_id, skill_id, session.id, event, data);
+            const result = await handleSkillsCallback(session.user_id, skill_id, session.id, event, data);
 
             let skillName = 'unknown';
             if (skill_id) {
@@ -248,7 +262,7 @@ export const skillsCallback = async (request: FastifyRequest<{ Body: SkillsCallb
                 session_id: session.id,
                 skill_id: skill_id,
                 skill_name: skillName,
-                data
+                data: result
             });
         }
 

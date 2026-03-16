@@ -3,7 +3,7 @@ import * as appsHandlers from './handlers.js';
 import { authenticate } from '../../middleware/auth.js';
 
 export default async function (fastify: FastifyInstance) {
-    fastify.post('/apps/prd_report/info', {
+    fastify.post('/apps/app_prd_report/info', {
         preHandler: [authenticate],
         schema: {
             description: 'Get PRD report information',

@@ -4,7 +4,7 @@ import type { BaseRequest, BaseResponse } from './common.js'
 export type SessionType = 0 | 1 | 2; // 0/general, 1/coding, 2/debugging 
 export type MessageType = 'text' | 'part';
 export type QuestionResult = 'reply' | 'reject';
-export type SkillsCallbackEvent = 'prd_report' | 'app_report' | 'release_report';
+export type SkillsCallbackEvent = 'app_prd_report' | 'app_gen_report' | 'release_report';
 // export type SkillsCallbackType = 'file' | 'unknown';
 
 // Session create

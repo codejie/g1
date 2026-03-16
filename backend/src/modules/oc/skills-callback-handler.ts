@@ -1,13 +1,14 @@
 import { AppsPrdReportModel } from '../apps/model.js';
 import { FilesModel } from '../files/model.js';
+import { AppPrdReportSSEType } from '../../types/apps.js';
 
 export async function handlePrdReportCallback(
     user_id: number,
     skill_id: number,
     session_id: number,
     data?: any
-): Promise<void> {
-    console.log('[SkillsCallback] Handling prd_report event:', { user_id, skill_id, session_id, data });
+): Promise<AppPrdReportSSEType | null> {
+    console.log('[SkillsCallback] Handling app_prd_report event:', { user_id, skill_id, session_id, data });
 
     const appId = data?.app_id ?? 1;
     const result = data?.result ?? 0;
@@ -15,11 +16,11 @@ export async function handlePrdReportCallback(
 
     if (!appId) {
         console.error('[SkillsCallback] Missing required field: app_id');
-        return;
+        return null;
     }
 
     try {
-        const fileType = data?.type || 'prd_report';
+        const fileType = data?.type || 'app_prd_report';
         const filePath = data?.path || '';
         const fileName = data?.name || `prd_report_${Date.now()}.md`;
 
@@ -40,8 +41,19 @@ export async function handlePrdReportCallback(
             file_id: file.id!
         });
         console.log('[SkillsCallback] PRD report created:', prdReport.id);
+
+        return {
+            result,
+            message,
+            app_id: appId,
+            type: fileType,
+            path: filePath,
+            name: fileName,
+            file_id: file.id
+        };
     } catch (error: any) {
         console.error('[SkillsCallback] Failed to create PRD report:', error.message);
+        return null;
     }
 }
 
@@ -51,7 +63,7 @@ export async function handleAppReportCallback(
     session_id: number,
     data?: any
 ): Promise<void> {
-    console.log('[SkillsCallback] Handling app_report event:', { user_id, skill_id, session_id, data });
+    console.log('[SkillsCallback] Handling app_gen_report event:', { user_id, skill_id, session_id, data });
 }
 
 export async function handleReleaseReportCallback(
@@ -69,19 +81,17 @@ export async function handleSkillsCallback(
     session_id: number,
     event: string,
     data?: any
-): Promise<void> {
+): Promise<any> {
     switch (event) {
-        case 'prd_report':
+        case 'app_prd_report':
         case 'result_with_file':
-            await handlePrdReportCallback(user_id, skill_id, session_id, data);
-            break;
-        case 'app_report':
-            await handleAppReportCallback(user_id, skill_id, session_id, data);
-            break;
+            return await handlePrdReportCallback(user_id, skill_id, session_id, data);
+        case 'app_gen_report':
+            return await handleAppReportCallback(user_id, skill_id, session_id, data);
         case 'release_report':
-            await handleReleaseReportCallback(user_id, skill_id, session_id, data);
-            break;
+            return await handleReleaseReportCallback(user_id, skill_id, session_id, data);
         default:
             console.log('[SkillsCallback] Unknown event type:', event);
+            return null;
     }
 }
