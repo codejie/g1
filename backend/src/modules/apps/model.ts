@@ -1,28 +1,29 @@
-import type { AppsModelType, AppsPrdReportModelType } from '../../types/apps.js';
+import type { AppsModelType, AppsPrdReportModelType, AppsGenReportModelType } from '../../types/apps.js';
 import db from '../../config/database.js';
 
 export class AppsModel {
-    static async create(data: Omit<AppsModelType, 'id' | 'created' | 'updated'>): Promise<AppsModelType> {
-        try {
-            const insertData: any = {
-                user_id: data.user_id,
-                app_type: data.app_type,
-                name: data.name,
-                disabled: data.disabled
-            };
-            if (data.description !== undefined) {
-                insertData.description = data.description;
-            }
-            const id = await db.insert('apps', insertData);
-            const created = await AppsModel.findById(id);
-            if (!created) {
-                throw new Error('Failed to create app record');
-            }
-            return created;
-        } catch (error: any) {
-            throw new Error(`Failed to create app: ${error.message}`);
-        }
+  static async create(data: Omit<AppsModelType, 'id' | 'created' | 'updated'>): Promise<AppsModelType> {
+    try {
+      const insertData: any = {
+        user_id: data.user_id,
+        app_type: data.app_type,
+        name: data.name,
+        status: data.status ?? 0,
+        disabled: data.disabled
+      };
+      if (data.description !== undefined) {
+        insertData.description = data.description;
+      }
+      const id = await db.insert('apps', insertData);
+      const created = await AppsModel.findById(id);
+      if (!created) {
+        throw new Error('Failed to create app record');
+      }
+      return created;
+    } catch (error: any) {
+      throw new Error(`Failed to create app: ${error.message}`);
     }
+  }
 
     static async findById(id: number): Promise<AppsModelType | undefined> {
         try {
@@ -45,26 +46,27 @@ export class AppsModel {
         }
     }
 
-    static async update(id: number, data: Partial<Omit<AppsModelType, 'id' | 'created' | 'updated'>>): Promise<AppsModelType | undefined> {
-        try {
-            const updateData: any = {};
-            if (data.user_id !== undefined) updateData.user_id = data.user_id;
-            if (data.app_type !== undefined) updateData.app_type = data.app_type;
-            if (data.name !== undefined) updateData.name = data.name;
-            if (data.description !== undefined) updateData.description = data.description;
-            if (data.disabled !== undefined) updateData.disabled = data.disabled;
-            updateData.updated = new Date().toISOString();
+  static async update(id: number, data: Partial<Omit<AppsModelType, 'id' | 'created' | 'updated'>>): Promise<AppsModelType | undefined> {
+    try {
+      const updateData: any = {};
+      if (data.user_id !== undefined) updateData.user_id = data.user_id;
+      if (data.app_type !== undefined) updateData.app_type = data.app_type;
+      if (data.name !== undefined) updateData.name = data.name;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.status !== undefined) updateData.status = data.status;
+      if (data.disabled !== undefined) updateData.disabled = data.disabled;
+      updateData.updated = new Date().toISOString();
 
-            if (Object.keys(updateData).length === 1) {
-                return AppsModel.findById(id);
-            }
+      if (Object.keys(updateData).length === 1) {
+        return AppsModel.findById(id);
+      }
 
-            await db.update('apps', updateData, 'id = ?', [id]);
-            return AppsModel.findById(id);
-        } catch (error: any) {
-            throw new Error(`Failed to update app: ${error.message}`);
-        }
+      await db.update('apps', updateData, 'id = ?', [id]);
+      return AppsModel.findById(id);
+    } catch (error: any) {
+      throw new Error(`Failed to update app: ${error.message}`);
     }
+  }
 
     static async delete(id: number): Promise<boolean> {
         try {
@@ -75,18 +77,19 @@ export class AppsModel {
         }
     }
 
-    private static mapRowToApp(row: any): AppsModelType {
-        return {
-            id: row.id,
-            user_id: row.user_id,
-            app_type: row.app_type,
-            name: row.name,
-            description: row.description,
-            disabled: row.disabled,
-            created: new Date(row.created),
-            updated: new Date(row.updated)
-        };
-    }
+  private static mapRowToApp(row: any): AppsModelType {
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      app_type: row.app_type,
+      name: row.name,
+      description: row.description,
+      status: row.status ?? 0,
+      disabled: row.disabled,
+      created: new Date(row.created),
+      updated: new Date(row.updated)
+    };
+  }
 }
 
 export class AppsPrdReportModel {
@@ -166,6 +169,97 @@ export class AppsPrdReportModel {
     }
 
     private static mapRowToPrdReport(row: any): AppsPrdReportModelType {
+        return {
+            id: row.id,
+            skill_id: row.skill_id,
+            session_id: row.session_id,
+            app_id: row.app_id,
+            result: row.result,
+            message: row.message,
+            file_id: row.file_id,
+            created: new Date(row.created),
+            updated: new Date(row.updated)
+        };
+    }
+}
+
+export class AppsGenReportModel {
+    static async create(data: Omit<AppsGenReportModelType, 'id' | 'created' | 'updated'>): Promise<AppsGenReportModelType> {
+        try {
+            const insertData: any = {
+                skill_id: data.skill_id,
+                session_id: data.session_id,
+                app_id: data.app_id,
+                result: data.result,
+                file_id: data.file_id
+            };
+            if (data.message !== undefined) {
+                insertData.message = data.message;
+            }
+            const id = await db.insert('apps_gen_report', insertData);
+            const created = await AppsGenReportModel.findById(id);
+            if (!created) {
+                throw new Error('Failed to create gen report record');
+            }
+            return created;
+        } catch (error: any) {
+            throw new Error(`Failed to create gen report: ${error.message}`);
+        }
+    }
+
+    static async findById(id: number): Promise<AppsGenReportModelType | undefined> {
+        try {
+            const row = await db.queryOne('SELECT * FROM apps_gen_report WHERE id = ?', [id]);
+            return row ? AppsGenReportModel.mapRowToGenReport(row) : undefined;
+        } catch (error: any) {
+            throw new Error(`Failed to find gen report by id: ${error.message}`);
+        }
+    }
+
+    static async findByAppId(appId: number): Promise<AppsGenReportModelType[]> {
+        try {
+            const rows = await db.queryAll(
+                'SELECT * FROM apps_gen_report WHERE app_id = ? ORDER BY created DESC',
+                [appId]
+            );
+            return rows.map(AppsGenReportModel.mapRowToGenReport);
+        } catch (error: any) {
+            throw new Error(`Failed to find gen reports by app id: ${error.message}`);
+        }
+    }
+
+    static async update(id: number, data: Partial<Omit<AppsGenReportModelType, 'id' | 'created' | 'updated'>>): Promise<AppsGenReportModelType | undefined> {
+        try {
+            const updateData: any = {};
+            if (data.skill_id !== undefined) updateData.skill_id = data.skill_id;
+            if (data.session_id !== undefined) updateData.session_id = data.session_id;
+            if (data.app_id !== undefined) updateData.app_id = data.app_id;
+            if (data.result !== undefined) updateData.result = data.result;
+            if (data.message !== undefined) updateData.message = data.message;
+            if (data.file_id !== undefined) updateData.file_id = data.file_id;
+            updateData.updated = new Date().toISOString();
+
+            if (Object.keys(updateData).length === 1) {
+                return AppsGenReportModel.findById(id);
+            }
+
+            await db.update('apps_gen_report', updateData, 'id = ?', [id]);
+            return AppsGenReportModel.findById(id);
+        } catch (error: any) {
+            throw new Error(`Failed to update gen report: ${error.message}`);
+        }
+    }
+
+    static async delete(id: number): Promise<boolean> {
+        try {
+            const result = await db.delete('apps_gen_report', 'id = ?', [id]);
+            return result > 0;
+        } catch (error: any) {
+            throw new Error(`Failed to delete gen report: ${error.message}`);
+        }
+    }
+
+    private static mapRowToGenReport(row: any): AppsGenReportModelType {
         return {
             id: row.id,
             skill_id: row.skill_id,

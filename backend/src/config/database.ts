@@ -86,6 +86,7 @@ class DatabaseWrapper {
                         app_type INTEGER NOT NULL DEFAULT 0,
                         name VARCHAR(100) NOT NULL,
                         description TEXT,
+                        status INTEGER NOT NULL DEFAULT 0,
                         disabled INTEGER NOT NULL DEFAULT 0,
                         created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -175,6 +176,28 @@ class DatabaseWrapper {
                 `, (err) => {
                     if (err) {
                         console.error('Error creating apps_prd_report table:', err.message);
+                        return reject(err);
+                    }
+                });
+
+                // Create apps_gen_report table
+                this.db.run(`
+                    CREATE TABLE IF NOT EXISTS apps_gen_report (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        skill_id INTEGER NOT NULL,
+                        session_id INTEGER NOT NULL,
+                        app_id INTEGER NOT NULL,
+                        result INTEGER NOT NULL DEFAULT 0,
+                        message TEXT,
+                        file_id INTEGER NOT NULL,
+                        created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(skill_id) REFERENCES skills(id),
+                        FOREIGN KEY(app_id) REFERENCES apps(id)
+                    )
+                `, (err) => {
+                    if (err) {
+                        console.error('Error creating apps_gen_report table:', err.message);
                         return reject(err);
                     }
                 });

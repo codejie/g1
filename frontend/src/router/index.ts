@@ -7,6 +7,8 @@ import WorkspacePage from '@/views/workspace/pages/WorkspacePage.vue'
 import Slide1Page from '@/views/workspace/pages/workspace/slide1.vue'
 import Slide2Page from '@/views/workspace/pages/workspace/slide2.vue'
 import Slide21Page from '@/views/workspace/pages/workspace/slide21.vue'
+import Slide3Page from '@/views/workspace/pages/workspace/slide3.vue'
+import Slide4Page from '@/views/workspace/pages/workspace/slide4.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -40,6 +42,18 @@ const router = createRouter({
           path: 'workspace/slide21',
           name: 'workspace-slide21',
           component: Slide21Page,
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'workspace/slide3',
+          name: 'workspace-slide3',
+          component: Slide3Page,
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'workspace/slide4',
+          name: 'workspace-slide4',
+          component: Slide4Page,
           meta: { requiresAuth: true },
         },
       ],

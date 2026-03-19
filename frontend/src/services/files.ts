@@ -1,5 +1,5 @@
 import api from './api'
-import type { DownloadRequest, GetInfoRequest, FilesModelType } from '../types/files'
+import type { DownloadRequest, GetInfoRequest, UploadReqeust, FilesModelType } from '../types/files'
 
 const filesService = {
     /**
@@ -30,6 +30,13 @@ const filesService = {
      */
     getFileInfo: async (data: GetInfoRequest): Promise<FilesModelType> => {
         return await api.post<FilesModelType>('/files/info', data)
+    },
+
+    /**
+     * Upload file content
+     */
+    upload: async (data: UploadReqeust): Promise<FilesModelType> => {
+        return await api.post<FilesModelType>('/files/upload', data)
     }
 }
 

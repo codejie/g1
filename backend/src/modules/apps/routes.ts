@@ -3,6 +3,49 @@ import * as appsHandlers from './handlers.js';
 import { authenticate } from '../../middleware/auth.js';
 
 export default async function (fastify: FastifyInstance) {
+    fastify.post('/apps/create', {
+        preHandler: [authenticate],
+        schema: {
+            description: 'Create new app',
+            tags: ['Apps'],
+            security: [{ bearerAuth: [] }],
+            body: {
+                type: 'object',
+                required: ['app_type', 'name'],
+                properties: {
+                    app_type: { type: 'number', description: 'App type' },
+                    name: { type: 'string', description: 'App name' },
+                    version: { type: 'string', description: 'App version' },
+                    description: { type: 'string', description: 'App description' }
+                }
+            },
+            response: {
+                200: {
+                    type: 'object',
+                    properties: {
+                        code: { type: 'number' },
+                        message: { type: 'string' },
+                        data: {
+                            type: 'object',
+                            properties: {
+                                id: { type: 'number' },
+                                user_id: { type: 'number' },
+                                app_type: { type: 'number' },
+                                name: { type: 'string' },
+                                version: { type: 'string' },
+                                description: { type: 'string' },
+                                status: { type: 'number' },
+                                disabled: { type: 'number' },
+                                created: { type: 'string', format: 'date-time' },
+                                updated: { type: 'string', format: 'date-time' }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }, appsHandlers.createApp);
+
     fastify.post('/apps/app_prd_report/info', {
         preHandler: [authenticate],
         schema: {
@@ -69,6 +112,7 @@ export default async function (fastify: FastifyInstance) {
                                 app_type: { type: 'number' },
                                 name: { type: 'string' },
                                 description: { type: 'string' },
+                                status: { type: 'number' },
                                 disabled: { type: 'number' },
                                 created: { type: 'string', format: 'date-time' },
                                 updated: { type: 'string', format: 'date-time' }
@@ -83,9 +127,15 @@ export default async function (fastify: FastifyInstance) {
     fastify.post('/apps/list', {
         preHandler: [authenticate],
         schema: {
-            description: 'Get my apps',
+            description: 'Get my apps list',
             tags: ['Apps'],
             security: [{ bearerAuth: [] }],
+            body: {
+                type: 'object',
+                properties: {
+                    app_type: { type: 'number', description: 'Filter by app type' }
+                }
+            },
             response: {
                 200: {
                     type: 'object',
@@ -101,7 +151,9 @@ export default async function (fastify: FastifyInstance) {
                                     user_id: { type: 'number' },
                                     app_type: { type: 'number' },
                                     name: { type: 'string' },
+                                    version: { type: 'string' },
                                     description: { type: 'string' },
+                                    status: { type: 'number' },
                                     disabled: { type: 'number' },
                                     created: { type: 'string', format: 'date-time' },
                                     updated: { type: 'string', format: 'date-time' }

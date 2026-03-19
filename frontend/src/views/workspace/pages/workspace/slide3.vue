@@ -2,10 +2,7 @@
   <div class="h-full flex flex-col overflow-hidden">
     <div class="flex-shrink-0 flex justify-between items-center p-4 border-b">
       <div>
-        <h1 class="text-2xl font-bold">Slide 1 Page</h1>
-        <p v-if="appType" class="text-sm text-gray-500">
-          App Type Received: {{ appType }}
-        </p>
+        <h1 class="text-2xl font-bold">Slide 3 Page</h1>
       </div>
       <button
         @click="goBack"
@@ -93,13 +90,8 @@
                   <span class="text-xs font-semibold text-purple-600">Data:</span>
                   <pre class="text-xs mt-1 p-2 bg-gray-50 rounded overflow-x-auto">{{ formatData(msg.data) }}</pre>
                 </div>
-                <ResultWithFile
-                  v-if="msg.event === 'result_with_file'"
-                  :name="msg.data?.data.name || 'Unknown'"
-                  :path="msg.data?.data.path || ''"
-                />
-                <AppPrdReport
-                  v-if="msg.event === 'app_prd_report'"
+                <AppGenReport
+                  v-if="msg.event === 'app_gen_report'"
                   :result="msg.data?.data?.result ?? 0"
                   :message="msg.data?.data?.message"
                   :name="msg.data?.data?.name"
@@ -124,6 +116,7 @@ import ocService from '@/services/oc'
 import { useAuthStore } from '@/stores/auth'
 import ResultWithFile from '@/views/workspace/components/ResultWithFile.vue'
 import AppPrdReport from '@/views/workspace/components/AppPrdReport.vue'
+import AppGenReport from '@/views/workspace/components/AppGenReport.vue'
 import ChatPanel from '@/views/workspace/components/ChatPanel.vue'
 import { formatData, formatTime } from '@/views/workspace/utils'
 
@@ -132,9 +125,8 @@ const router = useRouter()
 const { t } = useI18n()
 const authStore = useAuthStore()
 
-const appType = ref<number>(0)
-const appId = ref<number | null>(null)
 const isPanelOpen = ref(true)
+const appId = ref<number | null>(null)
 const sessionId = ref<number | null>(null)
 const isInitializing = ref(true)
 let abortController: AbortController | null = null
@@ -165,17 +157,6 @@ const clearSseMessages = () => {
 }
 
 onMounted(async () => {
-  const queryAppType = route.query.app_type
-  let appTypeNum = 0
-  if (queryAppType) {
-    if (typeof queryAppType === 'string') {
-      appTypeNum = parseInt(queryAppType) || 0
-    } else if (typeof queryAppType === 'number') {
-      appTypeNum = queryAppType
-    }
-  }
-  appType.value = isNaN(appTypeNum) ? 0 : appTypeNum
-
   if (typeof route.query.app_id === 'string') {
     appId.value = parseInt(route.query.app_id) || null
   }
@@ -192,13 +173,11 @@ onMounted(async () => {
 
     const updateResponse = await ocService.skillActive({
       session_id: session?.id,
-      skill_type: appType.value,
+      skill_type: 3,
       extra: {
         app_id: appId.value || 1
       }
     })
-
-    // No items in response for skillActive, response is empty
   } catch (error) {
     console.error('Failed to initialize OC session:', error)
   } finally {
@@ -245,16 +224,8 @@ const initSSE = async (id: number) => {
               const trimmedLine = line.trim()
               if (!trimmedLine) continue
               const parsed = JSON.parse(trimmedLine)
-              // console.log('SSE event:', parsed)
-              // Pass event and data to ChatPanel component
               if (parsed.event === 'oc_session_message' || parsed.event === 'oc_session_message_question') {
                 chatPanelRef.value?.handleSSEEvent(parsed.event, parsed.data)
-                // if (parsed.data.type === 'message.part.delta') continue;
-                // sseMessages.value.push({
-                //   event: parsed.event || 'unknown',
-                //   data: parsed.data || {},
-                //   timestamp: formatTime()
-                // })                  
               } else {
                 if (parsed.event.startsWith('server.')) {
                   continue
@@ -291,12 +262,9 @@ onUnmounted(() => {
 })
 
 const goBack = () => {
-  router.push({ name: 'workspace' })
+  router.back()
 }
 
-/**
- * Handles message sending from ChatPanel
- */
 const handleChatSend = async (message: string) => {
   if (sessionId.value !== null) {
     try {
@@ -305,8 +273,6 @@ const handleChatSend = async (message: string) => {
         message_type: 'text',
         message_content: message
       })
-
-      // SessionMessageAsyncResponse returns empty data
     } catch (error) {
       console.error('Failed to send message:', error)
       chatPanelRef.value?.addMessage('ai', 'Error: Failed to get response from AI.')
@@ -314,9 +280,6 @@ const handleChatSend = async (message: string) => {
   }
 }
 
-/**
- * Handles question reply from ChatPanel
- */
 const handleQuestionReply = async (message: string, data: any) => {
   console.log('handleQuestionReply', message, data)
   if (sessionId.value !== null) {
@@ -331,8 +294,6 @@ const handleQuestionReply = async (message: string, data: any) => {
         message_type: 'text',
         message_content: message
       })
-
-      // We can also add a system message if needed, or rely on SSE state updates
       console.log('handleQuestionReply response:', response)
     } catch (error) {
       console.error('Failed to reply question:', error)

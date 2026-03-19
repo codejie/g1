@@ -1,8 +1,8 @@
-import { AppsPrdReportModel } from '../apps/model.js';
+import { AppsPrdReportModel, AppsGenReportModel, AppsModel } from '../apps/model.js';
 import { FilesModel } from '../files/model.js';
-import { AppPrdReportSSEType } from '../../types/apps.js';
+import { AppPrdReportSSEType, AppGenReportSSEType } from '../../types/apps.js';
 
-export async function handlePrdReportCallback(
+export async function handleAppPrdReportCallback(
     user_id: number,
     skill_id: number,
     session_id: number,
@@ -57,13 +57,61 @@ export async function handlePrdReportCallback(
     }
 }
 
-export async function handleAppReportCallback(
+export async function handleAppGenReportCallback(
     user_id: number,
     skill_id: number,
     session_id: number,
     data?: any
-): Promise<void> {
+): Promise<AppGenReportSSEType | null> {
     console.log('[SkillsCallback] Handling app_gen_report event:', { user_id, skill_id, session_id, data });
+
+    const appId = data?.app_id ?? 1;
+    const result = data?.result ?? 0;
+    const message = data?.message;
+
+    if (!appId) {
+        console.error('[SkillsCallback] Missing required field: app_id');
+        return null;
+    }
+
+    try {
+        const fileType = data?.type || 'app_gen_report';
+        const filePath = data?.path;
+        const fileName = data?.name;
+
+        const file = await FilesModel.create({
+            user_id,
+            type: fileType,
+            path: filePath,
+            name: fileName,
+            status: 0
+        });
+
+        const genReport = await AppsGenReportModel.create({
+            skill_id,
+            session_id: session_id,
+            app_id: appId,
+            result,
+            message,
+            file_id: file.id!
+        });
+        console.log('[SkillsCallback] Gen report created:', genReport.id);
+
+        await AppsModel.update(appId, { status: 1 });
+
+        return {
+            result,
+            message,
+            app_id: appId,
+            type: fileType,
+            path: filePath,
+            name: fileName,
+            file_id: file.id
+        };
+    } catch (error: any) {
+        console.error('[SkillsCallback] Failed to create gen report:', error.message);
+        return null;
+    }
 }
 
 export async function handleReleaseReportCallback(
@@ -85,9 +133,9 @@ export async function handleSkillsCallback(
     switch (event) {
         case 'app_prd_report':
         case 'result_with_file':
-            return await handlePrdReportCallback(user_id, skill_id, session_id, data);
+            return await handleAppPrdReportCallback(user_id, skill_id, session_id, data);
         case 'app_gen_report':
-            return await handleAppReportCallback(user_id, skill_id, session_id, data);
+            return await handleAppGenReportCallback(user_id, skill_id, session_id, data);
         case 'release_report':
             return await handleReleaseReportCallback(user_id, skill_id, session_id, data);
         default:

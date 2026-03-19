@@ -29,6 +29,16 @@ export type DownloadResult = {
 
 export interface DownloadResponse extends BaseResponse<DownloadResult> { }
 
+// upload file
+// method: POST
+// path: /files/upload
+export interface UploadReqeust extends BaseRequest {
+    id: number
+    content: string
+}
+
+export interface UploadResponse extends BaseResponse<FilesModelType> { }
+
 // get file info
 // method: POST
 // path: /files/info

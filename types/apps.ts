@@ -7,6 +7,7 @@ export type AppsModelType = {
     name: string;
     version?: string;
     description?: string;
+    status: number; // default 0, 0: created, 1: completed
     disabled: number;
     created: Date;
     updated: Date;
@@ -36,15 +37,50 @@ export type AppPrdReportSSEType = {
     file_id?: number;
 }
 
-// App's Project Source Report
-export type AppsProjectReportModelType = {
-
+// App's Generation Report
+export type AppsGenReportModelType = {
+    id?: number;
+    skill_id: number;
+    session_id: number;
+    result: number;
+    message?: string;
+    app_id: number;
+    file_id: number;
+    created: Date;
+    updated: Date;
 }
 
-// App's Release Package Report
-export type AppsReleaseReportModelType = {
-
+export type AppGenReportSSEType = {
+    result: number;
+    message?: string;
+    app_id: number;
+    type?: string;
+    path?: string;
+    name?: string;
+    file_id?: number;
 }
+
+// // App's Project Source Report
+// export type AppsProjectReportModelType = {
+
+// }
+
+// // App's Release Package Report
+// export type AppsReleaseReportModelType = {
+
+// }
+
+// create app info
+// method: POST
+// path: /apps/create
+export interface CreateReqeust extends BaseRequest {
+    app_type: number;
+    name: string;
+    version?: string;
+    description?: string;
+}
+
+export interface CreateResponse extends BaseResponse<AppsModelType> { }
 
 // get app info
 // method: POST
@@ -55,6 +91,15 @@ export interface GetInfoRequest extends BaseRequest {
 
 export interface GetAppResponse extends BaseResponse<AppsModelType> { }
 
+// get app list
+// method: POST
+// path: /apps/list
+export interface GetListRequest extends BaseRequest {
+    app_type?: number;
+}
+
+export interface GetListResponse extends BaseResponse<AppsModelType[]> { }
+
 // get prd report info
 // method: POST
 // path: /apps/app_prd_report/info
@@ -63,3 +108,9 @@ export interface GetPrdReportInfoRequest extends BaseRequest {
 }
 
 export interface GetPrdReportInfoResponse extends BaseResponse<AppsPrdReportModelType> { }
+
+export interface GetGenReportInfoRequest extends BaseRequest {
+    id: number;
+}
+
+export interface GetGenReportInfoResponse extends BaseResponse<AppsGenReportModelType> { }
